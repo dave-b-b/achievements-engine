@@ -1,0 +1,47 @@
+# Node modules
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Optional npm cache
+.npm
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+lib/
+esm/
+cjs/
+*.tsbuildinfo
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE/editor folders
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Lock files (optional, if you prefer not to track them)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
