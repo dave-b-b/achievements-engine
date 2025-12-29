@@ -1,6 +1,6 @@
 // Test setup file for global configuration and mocks
 
-// Mock structuredClone for IndexedDB tests
+// Mock structuredClone for tests
 if (typeof global.structuredClone === 'undefined') {
   global.structuredClone = (obj: any) => JSON.parse(JSON.stringify(obj));
 }
@@ -56,3 +56,4 @@ beforeEach(() => {
   jest.clearAllTimers();
   jest.clearAllMocks();
 });
+

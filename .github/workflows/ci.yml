@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+jobs:
+  test:
+    name: Test and Build
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type checking
+        run: npm run type-check
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build package
+        run: npm run build
+
+      - name: Validate build artifacts exist
+        run: |
+          test -f dist/index.esm.js || (echo "Missing dist/index.esm.js" && exit 1)
+          test -f dist/index.cjs || (echo "Missing dist/index.cjs" && exit 1)
+          test -f dist/index.umd.js || (echo "Missing dist/index.umd.js" && exit 1)
+          test -f dist/index.d.ts || (echo "Missing dist/index.d.ts" && exit 1)
+          test -f dist/index.esm.js.map || (echo "Missing dist/index.esm.js.map" && exit 1)
+          test -f dist/index.cjs.map || (echo "Missing dist/index.cjs.map" && exit 1)
+          test -f dist/index.umd.js.map || (echo "Missing dist/index.umd.js.map" && exit 1)
+          echo "✓ All build artifacts exist"
+
+      - name: Validate TypeScript declarations
+        run: |
+          if ! grep -q "class AchievementEngine" dist/index.d.ts; then
+            echo "Missing AchievementEngine in TypeScript declarations"
+            exit 1
+          fi
+          if ! grep -q "class EventEmitter" dist/index.d.ts; then
+            echo "Missing EventEmitter in TypeScript declarations"
+            exit 1
+          fi
+          if ! grep -q "AchievementMetrics" dist/index.d.ts; then
+            echo "Missing AchievementMetrics in TypeScript declarations"
+            exit 1
+          fi
+          if ! grep -q "EngineConfig" dist/index.d.ts; then
+            echo "Missing EngineConfig in TypeScript declarations"
+            exit 1
+          fi
+          echo "✓ TypeScript declarations contain expected exports"
+
+      - name: Test CommonJS require
+        run: node -e "const pkg = require('./dist/index.cjs'); if (!pkg.AchievementEngine) throw new Error('Missing AchievementEngine export');"
+
+      - name: Validate package.json configuration
+        run: |
+          if [ "$(node -p "require('./package.json').main")" != "dist/index.cjs" ]; then
+            echo "package.json main field is incorrect"
+            exit 1
+          fi
+          if [ "$(node -p "require('./package.json').module")" != "dist/index.esm.js" ]; then
+            echo "package.json module field is incorrect"
+            exit 1
+          fi
+          if [ "$(node -p "require('./package.json').types")" != "dist/index.d.ts" ]; then
+            echo "package.json types field is incorrect"
+            exit 1
+          fi
+          echo "✓ package.json configuration is correct"
+
+      - name: Check bundle sizes
+        run: |
+          esm_size=$(stat -f%z dist/index.esm.js 2>/dev/null || stat -c%s dist/index.esm.js)
+          cjs_size=$(stat -f%z dist/index.cjs 2>/dev/null || stat -c%s dist/index.cjs)
+          umd_size=$(stat -f%z dist/index.umd.js 2>/dev/null || stat -c%s dist/index.umd.js)
+          max_size=512000
+
+          echo "Bundle sizes:"
+          echo "  ESM: $(echo "scale=2; $esm_size / 1024" | bc) KB"
+          echo "  CJS: $(echo "scale=2; $cjs_size / 1024" | bc) KB"
+          echo "  UMD: $(echo "scale=2; $umd_size / 1024" | bc) KB"
+
+          if [ $esm_size -gt $max_size ]; then
+            echo "ESM bundle exceeds 500KB limit"
+            exit 1
+          fi
+          if [ $cjs_size -gt $max_size ]; then
+            echo "CJS bundle exceeds 500KB limit"
+            exit 1
+          fi
+          if [ $umd_size -gt $max_size ]; then
+            echo "UMD bundle exceeds 500KB limit"
+            exit 1
+          fi
+          echo "✓ All bundles are under 500KB"

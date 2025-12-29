@@ -8,19 +8,21 @@ import type { AchievementMetrics } from '../../src/types';
 
 describe('IndexedDBStorage', () => {
   let storage: IndexedDBStorage;
+  const dbName = 'test-achievements-db';
 
   beforeEach(() => {
-    storage = new IndexedDBStorage('test-achievements-db');
-  }, 15000);
+    // Clean up any existing database
+    indexedDB.deleteDatabase(dbName);
+    storage = new IndexedDBStorage(dbName);
+  });
 
-  afterEach(async () => {
-    try {
-      await storage.clear();
-    } catch (error) {
-      // Ignore errors during cleanup
+  afterEach(() => {
+    // Close the database connection to allow cleanup
+    if (storage) {
+      storage.close();
     }
-    indexedDB.deleteDatabase('test-achievements-db');
-  }, 15000);
+    indexedDB.deleteDatabase(dbName);
+  });
 
   test('should store and retrieve async', async () => {
     const metrics: AchievementMetrics = {
@@ -111,9 +113,12 @@ describe('IndexedDBStorage', () => {
     await storage.setMetrics({ score: [100] });
 
     // Create new instance with same database name
-    const storage2 = new IndexedDBStorage('test-achievements-db');
+    const storage2 = new IndexedDBStorage(dbName);
     const retrieved = await storage2.getMetrics();
 
     expect(retrieved).toEqual({ score: [100] });
+
+    // Clean up the second storage instance
+    storage2.close();
   });
 });

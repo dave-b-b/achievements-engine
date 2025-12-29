@@ -71,7 +71,7 @@ describe('Integration Tests', () => {
         },
       });
 
-      const result = engine2.import(exported, { validate: false });
+      const result = engine2.import(exported, { validateConfig: false });
       expect(result.success).toBe(true);
 
       // Verify state preserved
