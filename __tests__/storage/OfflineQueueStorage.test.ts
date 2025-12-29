@@ -191,6 +191,9 @@ describe('OfflineQueueStorage', () => {
   });
 
   test('should throw error when reading offline', async () => {
+    // Mock inner storage to fail (simulating network error)
+    jest.spyOn(innerStorage, 'getMetrics').mockRejectedValue(new Error('Network error'));
+
     // Simulate offline
     (offlineStorage as any).isOnline = false;
 

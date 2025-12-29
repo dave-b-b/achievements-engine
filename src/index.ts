@@ -40,6 +40,7 @@ export type {
     EventMapping,
     RestApiStorageConfig,
     EngineConfig,
+    AchievementEngineApi,
 
     // Import/Export types
     ImportOptions,

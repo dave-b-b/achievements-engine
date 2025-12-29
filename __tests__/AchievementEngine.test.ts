@@ -391,9 +391,17 @@ describe('AchievementEngine', () => {
       engine.update({ score: 100 });
 
       const metrics = engine.getMetrics() as any;
-      metrics.score = 999;
-      metrics.newMetric = 'test';
 
+      // In strict mode, modifying frozen objects throws errors
+      // Attempt to modify should either throw or be silently ignored
+      try {
+        metrics.score = 999;
+        metrics.newMetric = 'test';
+      } catch (e) {
+        // Expected in strict mode
+      }
+
+      // Verify internal state is unaffected
       expect(engine.getMetrics().score).toBe(100);
       expect(engine.getMetrics()).not.toHaveProperty('newMetric');
     });
@@ -507,6 +515,16 @@ describe('AchievementEngine', () => {
       expect(engine.getUnlocked().length).toBeGreaterThan(0);
 
       engine.reset();
+      expect(engine.getUnlocked()).toEqual([]);
+    });
+
+    test('engine.getUnlocked() should return empty array when empty', () => {
+      const engine = new AchievementEngine({
+        achievements: {
+          score: { '100': { title: 'Century Club' } },
+        },
+      });
+
       expect(engine.getUnlocked()).toEqual([]);
     });
 

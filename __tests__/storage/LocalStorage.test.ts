@@ -62,22 +62,25 @@ describe('LocalStorage', () => {
   });
 
   test('should handle quota exceeded error', () => {
-    // Mock localStorage to throw quota exceeded error
-    const originalSetItem = Storage.prototype.setItem;
-    Storage.prototype.setItem = jest.fn(() => {
-      const error: Error & { name?: string } = new Error('QuotaExceededError');
-      error.name = 'QuotaExceededError';
-      throw error;
-    });
+    // Mock localStorage setItem to throw quota exceeded error
+    const originalSetItem = localStorage.setItem;
 
-    const largeMetrics: AchievementMetrics = { score: [100] };
+    try {
+      localStorage.setItem = function() {
+        const error: Error & { name?: string } = new Error('QuotaExceededError');
+        error.name = 'QuotaExceededError';
+        throw error;
+      };
 
-    expect(() => {
-      storage.setMetrics(largeMetrics);
-    }).toThrow(StorageQuotaError);
+      const largeMetrics: AchievementMetrics = { score: [100] };
 
-    // Restore original
-    Storage.prototype.setItem = originalSetItem;
+      expect(() => {
+        storage.setMetrics(largeMetrics);
+      }).toThrow(StorageQuotaError);
+    } finally {
+      // Restore original
+      localStorage.setItem = originalSetItem;
+    }
   });
 
   test('should clear localStorage on clear()', () => {

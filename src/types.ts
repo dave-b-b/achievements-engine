@@ -4,6 +4,7 @@
  */
 
 export type { UnsubscribeFn } from './EventEmitter';
+import type { AchievementEngine } from './AchievementEngine';
 
 // ============================================================================
 // Core Achievement Types (from react-achievements)
@@ -242,3 +243,23 @@ export interface ImportResult {
     mergedMetrics?: AchievementMetrics;
     mergedUnlocked?: string[];
 }
+
+/**
+ * Public API surface of the AchievementEngine
+ * This type represents the stable, supported API for external consumers
+ * Derived from the AchievementEngine class to prevent duplication
+ */
+export type AchievementEngineApi = Pick<
+  AchievementEngine,
+  | 'emit'
+  | 'update'
+  | 'on'
+  | 'once'
+  | 'off'
+  | 'getMetrics'
+  | 'getUnlocked'
+  | 'getAllAchievements'
+  | 'reset'
+  | 'export'
+  | 'import'
+>;

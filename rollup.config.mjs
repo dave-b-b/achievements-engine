@@ -4,20 +4,20 @@ import commonjs from '@rollup/plugin-commonjs';
 import dts from 'rollup-plugin-dts';
 
 export default [
-  // JavaScript build
   {
     input: 'src/index.ts',
+    external: [],
     output: [
-      {
-        file: 'dist/index.js',
-        format: 'cjs',
-        sourcemap: true,
-        exports: 'named'
-      },
       {
         file: 'dist/index.esm.js',
         format: 'esm',
         sourcemap: true
+      },
+      {
+        file: 'dist/index.cjs',
+        format: 'cjs',
+        sourcemap: true,
+        exports: 'named'
       },
       {
         file: 'dist/index.umd.js',
@@ -35,7 +35,6 @@ export default [
       })
     ]
   },
-  // TypeScript declarations build
   {
     input: 'src/index.ts',
     output: {

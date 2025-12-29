@@ -58,6 +58,10 @@ export class IndexedDBStorage implements AsyncAchievementStorage {
             request.onerror = () => {
                 reject(new StorageError(`Failed to read from IndexedDB: ${key}`));
             };
+
+            transaction.onerror = () => {
+                reject(new StorageError(`Transaction failed for key: ${key}`));
+            };
         });
     }
 
@@ -80,6 +84,10 @@ export class IndexedDBStorage implements AsyncAchievementStorage {
             request.onerror = () => {
                 reject(new StorageError(`Failed to write to IndexedDB: ${key}`));
             };
+
+            transaction.onerror = () => {
+                reject(new StorageError(`Transaction failed for key: ${key}`));
+            };
         });
     }
 
@@ -101,6 +109,10 @@ export class IndexedDBStorage implements AsyncAchievementStorage {
 
             request.onerror = () => {
                 reject(new StorageError(`Failed to delete from IndexedDB: ${key}`));
+            };
+
+            transaction.onerror = () => {
+                reject(new StorageError(`Transaction failed while deleting key: ${key}`));
             };
         });
     }
@@ -128,5 +140,15 @@ export class IndexedDBStorage implements AsyncAchievementStorage {
             this.delete('metrics'),
             this.delete('unlocked')
         ]);
+    }
+
+    /**
+     * Close the database connection
+     */
+    close(): void {
+        if (this.db) {
+            this.db.close();
+            this.db = null;
+        }
     }
 }

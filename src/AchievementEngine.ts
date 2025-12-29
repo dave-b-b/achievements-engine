@@ -159,6 +159,9 @@ export class AchievementEngine extends EventEmitter {
         // Call config error handler if provided
         if (this.config.onError) {
             this.config.onError(error);
+        } else {
+            // Fallback to console.error if no error handler provided
+            console.error('[AchievementEngine]', context ? `${context}:` : '', error);
         }
     }
 
@@ -378,11 +381,20 @@ export class AchievementEngine extends EventEmitter {
     import(jsonString: string, options?: ImportOptions): ImportResult {
         const metricsInArrayFormat = this.getMetricsAsArray();
 
+        // Transform options from public API format to internal format
+        const internalOptions = {
+            mergeStrategy: options?.merge ? 'merge' as const :
+                          options?.overwrite ? 'replace' as const :
+                          'replace' as const,
+            validate: options?.validateConfig ?? true,
+            expectedConfigHash: this.configHash
+        };
+
         const result = importAchievementData(
             jsonString,
             metricsInArrayFormat,
             this.unlockedAchievements,
-            { ...options, expectedConfigHash: this.configHash }
+            internalOptions
         );
 
         if (result.success && 'mergedMetrics' in result && 'mergedUnlocked' in result) {
