@@ -97,18 +97,9 @@ class ValueAchievement extends Achievement {
  * Complex achievement builder for power users (Tier 3)
  */
 class ComplexAchievementBuilder {
-  private id: string = '';
   private metric: string = '';
-  private condition: ((value: AchievementMetricValue, state: AchievementState) => boolean) | null = null;
+  private condition: ((metrics: Record<string, any>) => boolean) | null = null;
   private award: AwardDetails = {};
-
-  /**
-   * Set the unique identifier for this achievement
-   */
-  withId(id: string): ComplexAchievementBuilder {
-    this.id = id;
-    return this;
-  }
 
   /**
    * Set the metric this achievement tracks
@@ -121,7 +112,7 @@ class ComplexAchievementBuilder {
   /**
    * Set the condition function that determines if achievement is unlocked
    */
-  withCondition(fn: (value: AchievementMetricValue, state: AchievementState) => boolean): ComplexAchievementBuilder {
+  withCondition(fn: (metrics: Record<string, any>) => boolean): ComplexAchievementBuilder {
     this.condition = fn;
     return this;
   }
@@ -138,27 +129,17 @@ class ComplexAchievementBuilder {
    * Build the final achievement configuration
    */
   build(): SimpleAchievementConfig {
-    if (!this.id || !this.metric || !this.condition) {
-      throw new Error('Complex achievement requires id, metric, and condition');
+    if (!this.metric || !this.condition) {
+      throw new Error('Complex achievement requires metric and condition');
     }
 
-    // Convert our two-parameter condition function to the single-parameter format
-    // expected by the existing CustomAchievementDetails type
-    const compatibleCondition = (metrics: Record<string, any>) => {
-      const state: AchievementState = {
-        metrics: {} as any, // We don't have access to the full metrics structure here
-        unlockedAchievements: []
-      };
-      return this.condition!(metrics[this.metric], state);
-    };
-
     return {
-      [this.id]: {
+      [this.metric]: {
         custom: {
-          title: this.award.title || this.id,
-          description: this.award.description || `Achieve ${this.award.title || this.id}`,
+          title: this.award.title || this.metric,
+          description: this.award.description || `Achieve ${this.award.title || this.metric}`,
           icon: this.award.icon || '💎',
-          condition: compatibleCondition
+          condition: this.condition
         }
       }
     };

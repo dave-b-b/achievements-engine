@@ -233,11 +233,10 @@ describe('AchievementBuilder - Three-Tier API', () => {
     describe('ComplexAchievementBuilder', () => {
       it('should create complex achievement with full control', () => {
         const config = AchievementBuilder.create()
-          .withId('weekly_login')
           .withMetric('lastLoginDate')
-          .withCondition((value, _state) => {
-            if (value instanceof Date) {
-              return value.getTime() > Date.now() - (7 * 24 * 60 * 60 * 1000);
+          .withCondition((metrics) => {
+            if (metrics.lastLoginDate instanceof Date) {
+              return metrics.lastLoginDate.getTime() > Date.now() - (7 * 24 * 60 * 60 * 1000);
             }
             return false;
           })
@@ -249,7 +248,7 @@ describe('AchievementBuilder - Three-Tier API', () => {
           .build();
 
         expect(config).toEqual({
-          weekly_login: {
+          lastLoginDate: {
             custom: {
               title: 'Weekly Warrior',
               description: 'Logged in within the last week',
@@ -260,7 +259,7 @@ describe('AchievementBuilder - Three-Tier API', () => {
         });
 
         // Test the condition function (note: it now receives metrics object)
-        const condition = (config.weekly_login.custom as CustomAchievementDetails).condition;
+        const condition = (config.lastLoginDate.custom as CustomAchievementDetails).condition;
         expect(condition).toBeDefined();
 
         // Test with Date within 7 days
@@ -278,21 +277,20 @@ describe('AchievementBuilder - Three-Tier API', () => {
       it('should throw error if required fields are missing', () => {
         expect(() => {
           AchievementBuilder.create().build();
-        }).toThrow('Complex achievement requires id, metric, and condition');
+        }).toThrow('Complex achievement requires metric and condition');
       });
 
       it('should use default values when award details are not provided', () => {
         const config = AchievementBuilder.create()
-          .withId('test_achievement')
           .withMetric('testMetric')
           .withCondition(() => true)
           .build();
 
         expect(config).toEqual({
-          test_achievement: {
+          testMetric: {
             custom: {
-              title: 'test_achievement',
-              description: 'Achieve test_achievement',
+              title: 'testMetric',
+              description: 'Achieve testMetric',
               icon: '💎',
               condition: expect.any(Function)
             }

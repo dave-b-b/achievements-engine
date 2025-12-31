@@ -62,8 +62,9 @@ export { OfflineQueueStorage } from './storage/OfflineQueueStorage';
 export { StorageType, isAsyncStorage } from './types';
 
 // Utilities
-export { normalizeAchievements } from './utils/configNormalizer';
+export { normalizeAchievements, isSimpleConfig } from './utils/configNormalizer';
 export { exportAchievementData, createConfigHash } from './utils/dataExport';
+export type { ExportedData } from './utils/dataExport';
 export { importAchievementData } from './utils/dataImport';
 
 // Achievement Builder

@@ -193,7 +193,7 @@ export class AchievementEngine extends EventEmitter {
      * Update metrics and evaluate achievements
      * @param newMetrics - Metrics to update
      */
-    update(newMetrics: Record<string, any>): void {
+    update<T extends Record<string, any>>(newMetrics: Partial<T>): void {
         const oldMetrics = { ...this.metrics };
 
         // Update metrics
@@ -301,8 +301,8 @@ export class AchievementEngine extends EventEmitter {
     /**
      * Get current metrics (readonly to prevent external modification)
      */
-    getMetrics(): Readonly<Record<string, any>> {
-        return Object.freeze({ ...this.metrics });
+    getMetrics<T extends Record<string, any>>(): Readonly<Partial<T>> {
+        return Object.freeze({ ...this.metrics }) as Readonly<Partial<T>>;
     }
 
     /**
