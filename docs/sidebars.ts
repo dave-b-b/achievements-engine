@@ -9,11 +9,11 @@ const sidebars: SidebarsConfig = {
       label: 'Guides',
       items: [
         'guides/builder-api',
-        'guides/simple-api',
+        'guides/direct-updates',
+        'guides/event-based-tracking',
         'guides/error-handling',
         'guides/data-portability',
         'guides/storage',
-        'guides/events',
       ],
     },
   ],

@@ -608,4 +608,4 @@ engine.on('error', (event) => {
 
 - [Data Portability](/docs/guides/data-portability) - Export/import for error recovery
 - [Storage](/docs/guides/storage) - Configure different storage backends
-- [Events](/docs/guides/events) - Listen to achievement events
+- [Event-Based Tracking](/docs/guides/event-based-tracking) - Listen to achievement events

@@ -177,7 +177,7 @@ const engine = new AchievementEngine({
   achievements,
   storage: 'restApi',
   restApiConfig: {
-    endpoint: 'https://api.example.com/achievements',
+    baseUrl: 'https://api.example.com/achievements',
     headers: {
       'Authorization': 'Bearer YOUR_TOKEN'
     }
@@ -187,9 +187,9 @@ const engine = new AchievementEngine({
 
 ## Next Steps
 
-- [Builder API Guide](/docs/guides/builder-api) - Master the achievement builder
-- Event System (coming soon) - Learn about all available events
-- Storage Options (coming soon) - Deep dive into storage configuration
-- TypeScript (coming soon) - Type-safe achievement development
-- Framework Integrations (coming soon) - Use with React, Vue, Angular, etc.
+- [Builder API](/docs/guides/builder-api) - Master the achievement builder
+- [Event-Based Tracking](/docs/guides/event-based-tracking) - Learn about all available events
+- [Storage](/docs/guides/storage) - Deep dive into storage configuration
+- [Data Portability](/docs/guides/data-portability) - Export and import user data
+- [Error Handling](/docs/guides/error-handling) - Handle errors gracefully
 

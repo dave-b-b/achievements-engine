@@ -311,7 +311,7 @@ For complex conditions, use the metrics parameter to access all metrics:
 
 ## Next Steps
 
-- [Events](/docs/guides/events) - Listen to achievement unlocks
+- [Event-Based Tracking](/docs/guides/event-based-tracking) - Listen to achievement unlocks
 - [Storage](/docs/guides/storage) - Configure persistence
 - [Data Portability](/docs/guides/data-portability) - Export and import user data
 - [Error Handling](/docs/guides/error-handling) - Handle errors gracefully

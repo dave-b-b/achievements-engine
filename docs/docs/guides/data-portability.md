@@ -112,7 +112,7 @@ console.log(hash);  // "abc123def456"
 Completely replaces existing data:
 
 ```typescript
-const result = await engine.import(jsonData, {
+const result = engine.import(jsonData, {
   merge: false,
   overwrite: true
 });
@@ -128,7 +128,7 @@ const result = await engine.import(jsonData, {
 Combines imported data with existing data:
 
 ```typescript
-const result = await engine.import(jsonData, {
+const result = engine.import(jsonData, {
   merge: true,
   overwrite: false
 });
@@ -149,7 +149,7 @@ const result = await engine.import(jsonData, {
 Validate configuration hash before importing:
 
 ```typescript
-const result = await engine.import(jsonData, {
+const result = engine.import(jsonData, {
   merge: true,
   validateConfig: true,
   expectedConfigHash: createConfigHash(achievements)
@@ -216,7 +216,7 @@ function uploadBackup(engine: AchievementEngine, file: File) {
 
   reader.onload = async (e) => {
     const jsonData = e.target?.result as string;
-    const result = await engine.import(jsonData, { merge: true });
+    const result = engine.import(jsonData, { merge: true });
 
     if (result.success) {
       console.log('Backup restored!');
@@ -293,9 +293,7 @@ class S3BackupService {
 
     try {
       const data = await this.s3.getObject(params).promise();
-      const jsonData = data.Body?.toString('utf-8') || '';
-
-      const result = await engine.import(jsonData, { merge: true });
+      const result = engine.import(jsonData, { merge: true });
       console.log('Restored from S3');
       return result;
     } catch (error) {
@@ -398,7 +396,7 @@ class AzureBackupService {
       const downloadResponse = await blockBlobClient.download(0);
       const jsonData = await this.streamToString(downloadResponse.readableStreamBody!);
 
-      const result = await engine.import(jsonData, { merge: true });
+      const result = engine.import(jsonData, { merge: true });
       console.log('Restored from Azure');
       return result;
     } catch (error) {
@@ -519,7 +517,7 @@ await backupService.backupEncrypted(encrypted, userId);
 // Import with decryption
 const encrypted = await backupService.restoreEncrypted(backupKey);
 const decrypted = decryptData(encrypted, userSecret);
-await engine.import(decrypted);
+engine.import(decrypted);
 ```
 
 ### 2. Version Your Backups
@@ -536,7 +534,7 @@ import { createConfigHash } from 'achievements-engine';
 
 const expectedHash = createConfigHash(achievements);
 
-const result = await engine.import(jsonData, {
+const result = engine.import(jsonData, {
   merge: true,
   validateConfig: true,
   expectedConfigHash: expectedHash
@@ -555,7 +553,7 @@ if (!result.success) {
 ```typescript
 async function safeImport(engine: AchievementEngine, jsonData: string) {
   try {
-    const result = await engine.import(jsonData, { merge: true });
+    const result = engine.import(jsonData, { merge: true });
 
     if (!result.success) {
       console.error('Import failed:', result.errors);
@@ -684,5 +682,5 @@ process.on('SIGINT', () => {
 
 - [Error Handling](/docs/guides/error-handling) - Handle backup failures gracefully
 - [Storage Options](/docs/guides/storage) - Configure different storage backends
-- [Events](/docs/guides/events) - Listen to achievement events
+- [Event-Based Tracking](/docs/guides/event-based-tracking) - Listen to achievement events
 

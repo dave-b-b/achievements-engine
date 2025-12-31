@@ -11,32 +11,29 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
+    title: 'Event-Driven Architecture',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        React to achievement unlocks, metric updates, and errors in real-time with a powerful event system.
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
+    title: 'Flexible Storage',
     Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        Choose from in-memory, localStorage, IndexedDB, or a REST API backend. You can even provide your own custom storage adapter.
       </>
     ),
   },
   {
-    title: 'Powered by React',
+    title: 'Simple & Powerful API',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        A simple API for common use cases, and a powerful builder API for complex achievements.
       </>
     ),
   },

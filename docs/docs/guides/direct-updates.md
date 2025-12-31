@@ -2,24 +2,13 @@
 sidebar_position: 4
 ---
 
-# Simple API Guide
+# Direct Metric Updates
 
-The Simple API is the recommended way to configure achievements in achievements-engine. It uses an intuitive object structure that reduces configuration complexity.
+This guide explains how to directly update achievement metrics using the `update()` method. This is the most straightforward way to track progress in `achievements-engine`.
 
 ## Overview
 
-The Simple API uses an object structure where you define metrics, thresholds, and awards:
-
-```typescript
-const achievements = {
-  metricName: {
-    threshold: { title, description, icon },
-    // ... more thresholds
-  }
-};
-```
-
-This configuration works seamlessly with the AchievementEngine:
+The core of direct metric updates is the `engine.update()` method. You pass an object where keys are metric names and values are the new metric values.
 
 ```typescript
 import { AchievementEngine } from 'achievements-engine';
@@ -238,12 +227,6 @@ class Game {
       achievements: gameAchievements,
       storage: 'localStorage'
     });
-
-    // Listen for achievements
-    this.engine.on('achievement:unlocked', (event) => {
-      console.log(`🎉 ${event.achievementTitle}`);
-      this.showNotification(event);
-    });
   }
 
   scorePoints(points: number) {
@@ -269,19 +252,14 @@ class Game {
   setDifficulty(level: 'easy' | 'medium' | 'hard') {
     this.engine.update({ difficulty: level });
   }
-
-  private showNotification(event: any) {
-    // Your notification logic here
-    console.log(`Unlocked: ${event.achievementTitle}`);
-  }
 }
 
 // Usage
 const game = new Game();
-game.scorePoints(100); // Unlocks "Beginner"
-game.handleClick(); // Increments clicks
-game.setDifficulty('hard'); // Unlocks "Hardened Warrior"
-game.completeGame(); // May unlock "Speed Demon" or "Perfectionist"
+game.scorePoints(100);
+game.handleClick();
+game.setDifficulty('hard');
+game.completeGame();
 ```
 
 ---
@@ -323,11 +301,6 @@ game.completeGame(); // May unlock "Speed Demon" or "Perfectionist"
     let score = 0;
     let clicks = 0;
 
-    // Listen for unlocks
-    engine.on('achievement:unlocked', (event) => {
-      alert(`🎉 ${event.achievementTitle}`);
-    });
-
     // Score button
     document.getElementById('scoreBtn').addEventListener('click', () => {
       score += 100;
@@ -349,204 +322,3 @@ game.completeGame(); // May unlock "Speed Demon" or "Perfectionist"
 </body>
 </html>
 ```
-
----
-
-## Best Practices
-
-### 1. Use Descriptive Metric Names
-
-```typescript
-// ✅ Good - clear and specific
-const achievements = {
-  questsCompleted: { 10: { title: 'Quest Master', icon: '🎯' } },
-  bossesDefeated: { 5: { title: 'Boss Slayer', icon: '⚔️' } },
-};
-
-// ❌ Bad - vague names
-const achievements = {
-  count: { 10: { title: 'Achievement', icon: '🏆' } },
-  num: { 5: { title: 'Another', icon: '⭐' } },
-};
-```
-
-### 2. Provide Meaningful Descriptions
-
-```typescript
-// ✅ Good - tells users what to do
-{
-  title: 'Speed Runner',
-  description: 'Complete the game in under 5 minutes',
-  icon: '⚡'
-}
-
-// ❌ Bad - unhelpful
-{
-  title: 'Fast',
-  description: 'Be fast',
-  icon: '⚡'
-}
-```
-
-### 3. Choose Appropriate Icons
-
-Use emojis that clearly represent the achievement:
-
-```typescript
-const achievements = {
-  score: {
-    100: { title: 'Bronze', icon: '🥉' },   // Bronze medal
-    500: { title: 'Silver', icon: '🥈' },   // Silver medal
-    1000: { title: 'Gold', icon: '🥇' },    // Gold medal
-  },
-  combat: {
-    10: { title: 'Warrior', icon: '⚔️' },   // Sword for combat
-    50: { title: 'Champion', icon: '🏆' },  // Trophy for mastery
-  }
-};
-```
-
-### 4. Group Related Achievements
-
-```typescript
-const achievements = {
-  // Combat achievements
-  enemiesDefeated: {
-    10: { title: 'Combatant', icon: '⚔️' },
-    50: { title: 'Warrior', icon: '🗡️' },
-  },
-  bossesDefeated: {
-    1: { title: 'Boss Hunter', icon: '🎯' },
-    5: { title: 'Boss Master', icon: '👑' },
-  },
-
-  // Collection achievements
-  itemsCollected: {
-    25: { title: 'Collector', icon: '📦' },
-    100: { title: 'Hoarder', icon: '💰' },
-  },
-  treasuresFound: {
-    5: { title: 'Treasure Hunter', icon: '💎' },
-    25: { title: 'Fortune Finder', icon: '🏴‍☠️' },
-  },
-
-  // Progression achievements
-  levelsCompleted: {
-    5: { title: 'Explorer', icon: '🗺️' },
-    25: { title: 'Adventurer', icon: '🧭' },
-  },
-  questsCompleted: {
-    10: { title: 'Quest Starter', icon: '📜' },
-    50: { title: 'Quest Master', icon: '⭐' },
-  },
-};
-```
-
-### 5. Use Custom Conditions for Complex Logic
-
-```typescript
-const achievements = {
-  // Simple threshold
-  score: {
-    1000: { title: 'High Scorer', icon: '🏆' }
-  },
-
-  // Complex multi-metric condition
-  masterPlayer: {
-    custom: {
-      title: 'Master Player',
-      description: 'Score 1000+ points with 90%+ accuracy in under 10 minutes',
-      icon: '💎',
-      condition: (metrics) => {
-        return metrics.score >= 1000 &&
-               metrics.accuracy >= 90 &&
-               metrics.timeElapsed < 600;
-      }
-    }
-  }
-};
-```
-
----
-
-## Type Safety with TypeScript
-
-Define your metric types for type-safe updates:
-
-```typescript
-interface GameMetrics {
-  score: number;
-  level: number;
-  clicks: number;
-  completedTutorial: boolean;
-  difficulty: 'easy' | 'medium' | 'hard';
-  accuracy: number;
-  timeElapsed: number;
-  completed: boolean;
-}
-
-// Type-safe achievement configuration
-const achievements: Record<string, any> = {
-  score: {
-    100: { title: 'Century!', icon: '🏆' }
-  },
-  // ... more achievements
-};
-
-const engine = new AchievementEngine({
-  achievements,
-  storage: 'localStorage'
-});
-
-// Type-safe updates
-engine.update<GameMetrics>({
-  score: 100,
-  level: 5,
-  completedTutorial: true
-});
-```
-
----
-
-## Migration from Complex API
-
-If you're using the Complex API (array of achievement objects), you can migrate to the Simple API:
-
-**Complex API (Old):**
-```typescript
-const achievements = [
-  {
-    id: 'score_100',
-    title: 'Century!',
-    description: 'Score 100 points',
-    icon: '🏆',
-    metric: 'score',
-    condition: (value) => value >= 100
-  }
-];
-```
-
-**Simple API (New):**
-```typescript
-const achievements = {
-  score: {
-    100: { title: 'Century!', description: 'Score 100 points', icon: '🏆' }
-  }
-};
-```
-
-Or use the AchievementBuilder for even more convenience:
-
-```typescript
-import { AchievementBuilder } from 'achievements-engine';
-
-const achievements = AchievementBuilder.createScoreAchievements([100, 500, 1000]);
-```
-
----
-
-## Next Steps
-
-- [Builder API](/docs/guides/builder-api) - Smart defaults and chainable customization
-- [Events System](/docs/guides/events) - Listen to achievement events
-- [Storage Options](/docs/guides/storage) - Configure persistence
