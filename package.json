@@ -1,6 +1,6 @@
 {
   "name": "achievements-engine",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Framework-agnostic achievement system with event-based architecture. Core engine for gamification features.",
   "main": "dist/index.cjs",
   "module": "dist/index.esm.js",
