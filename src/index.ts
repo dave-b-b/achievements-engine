@@ -66,10 +66,6 @@ export { normalizeAchievements } from './utils/configNormalizer';
 export { exportAchievementData, createConfigHash } from './utils/dataExport';
 export { importAchievementData } from './utils/dataImport';
 
-// Achievement Builder
-export { AchievementBuilder } from './utils/achievementHelpers';
-export type { AwardDetails } from './types';
-
 // Errors
 export {
     AchievementError,

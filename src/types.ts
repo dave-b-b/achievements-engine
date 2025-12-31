@@ -244,19 +244,6 @@ export interface ImportResult {
     mergedUnlocked?: string[];
 }
 
-// ============================================================================
-// Achievement Builder Types
-// ============================================================================
-
-/**
- * Helper interface for cleaner achievement award definitions
- */
-export interface AwardDetails {
-    title?: string;
-    description?: string;
-    icon?: string;
-}
-
 /**
  * Public API surface of the AchievementEngine
  * This type represents the stable, supported API for external consumers
