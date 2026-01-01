@@ -157,12 +157,13 @@ const achievement = AchievementBuilder.create()
 
 ### Multi-Metric Condition
 
-The `metrics` parameter gives you access to all metrics:
+The `metrics` parameter gives you access to all metrics. **Note**: Even for multi-metric conditions, `.withMetric()` is required (it's used as the config key). The condition function receives the entire metrics object, so you can check any metric:
 
 ```typescript
 const achievement = AchievementBuilder.create()
-  .withMetric('combo_achievement')
+  .withMetric('combo_achievement') // Required - used as config key
   .withCondition((metrics) => {
+    // Can access all metrics, not just the one specified in withMetric()
     return metrics.score >= 1000 && metrics.level >= 10;
   })
   .withAward({
@@ -296,15 +297,20 @@ Make custom achievement metrics self-documenting:
 ```
 
 ### 4. Leverage the Metrics Parameter
-For complex conditions, use the metrics parameter to access all metrics:
-```typescript
-.withCondition((metrics) => {
-  // Access other metrics
-  const level = metrics.level;
-  const quests = metrics.questsCompleted;
+For complex conditions, use the metrics parameter to access all metrics. Even though you must specify a metric name with `.withMetric()`, the condition function receives the entire metrics object:
 
-  return /* your complex condition */;
-})
+```typescript
+AchievementBuilder.create()
+  .withMetric('custom_achievement') // Required - used as config key
+  .withCondition((metrics) => {
+    // Can access ALL metrics, not just 'custom_achievement'
+    const level = metrics.level;
+    const quests = metrics.questsCompleted;
+    const score = metrics.score;
+
+    return level >= 10 && quests >= 5 && score >= 1000;
+  })
+  .build()
 ```
 
 ---
