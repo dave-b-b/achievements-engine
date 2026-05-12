@@ -149,6 +149,11 @@ export interface StateChangedEvent {
     metrics: AchievementMetrics;
     unlocked: string[];
     timestamp: number;
+    unlockedIds: string[];
+    unlockedAchievements: AchievementWithStatus[];
+    allAchievements: AchievementWithStatus[];
+    unlockedCount: number;
+    totalCount: number;
 }
 
 /**
@@ -244,6 +249,20 @@ export interface ImportResult {
     mergedUnlocked?: string[];
 }
 
+export interface AchievementSnapshot {
+    metrics: AchievementMetrics;
+    unlockedIds: string[];
+    unlockedAchievements: AchievementWithStatus[];
+    allAchievements: AchievementWithStatus[];
+    unlockedCount: number;
+    totalCount: number;
+}
+
+export interface AchievementUpdateResult {
+    newlyUnlocked: AchievementUnlockedEvent[];
+    snapshot: AchievementSnapshot;
+}
+
 // ============================================================================
 // Achievement Builder Types
 // ============================================================================
@@ -269,9 +288,12 @@ export type AchievementEngineApi = Pick<
   | 'on'
   | 'once'
   | 'off'
+  | 'ready'
   | 'getMetrics'
   | 'getUnlocked'
   | 'getAllAchievements'
+  | 'getSnapshot'
+  | 'increment'
   | 'reset'
   | 'export'
   | 'import'

@@ -233,6 +233,23 @@ allAchievements.forEach(achievement => {
   console.log(achievement.achievementTitle);
   console.log(achievement.isUnlocked); // true or false
 });
+
+// Get one derived state snapshot
+const snapshot = engine.getSnapshot();
+console.log(snapshot.unlockedIds);
+console.log(snapshot.unlockedCount, snapshot.totalCount);
+
+// Increment numeric metrics
+const result = engine.increment('score', 50);
+console.log(result.newlyUnlocked);
+```
+
+For async storage backends such as IndexedDB, REST API, or custom async storage,
+wait for hydration before rendering persisted state:
+
+```typescript
+const snapshot = await engine.ready();
+console.log(snapshot.metrics);
 ```
 
 ## Import/Export

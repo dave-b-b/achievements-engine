@@ -24,6 +24,8 @@ import type {
     ImportResult,
     AchievementConfiguration,
     AchievementUnlockedEvent,
+    AchievementSnapshot,
+    AchievementUpdateResult,
     MetricUpdatedEvent,
     StateChangedEvent,
     ErrorEvent,
@@ -33,6 +35,15 @@ import type {
     AchievementConfigurationType
 } from './types';
 
+interface ReadyStorageState {
+    metrics: AchievementMetrics;
+    unlocked: string[];
+}
+
+type ReadyStorage = AchievementStorage & {
+    ready?: () => Promise<ReadyStorageState>;
+};
+
 export class AchievementEngine extends EventEmitter {
     private config: EngineConfig;
     private achievements: AchievementConfiguration;
@@ -40,6 +51,7 @@ export class AchievementEngine extends EventEmitter {
     private metrics: Record<string, any> = {};
     private unlockedAchievements: string[] = [];
     private configHash: string;
+    private readyPromise: Promise<AchievementSnapshot>;
 
     constructor(config: EngineConfig) {
         super();
@@ -56,6 +68,8 @@ export class AchievementEngine extends EventEmitter {
 
         // Load initial state from storage
         this.loadFromStorage();
+
+        this.readyPromise = this.initializeReadyState();
     }
 
     /**
@@ -98,6 +112,9 @@ export class AchievementEngine extends EventEmitter {
             // Check if async storage
             const testResult = storageInstance.getMetrics();
             if (testResult && typeof testResult.then === 'function') {
+                if (typeof testResult.catch === 'function') {
+                    testResult.catch(() => undefined);
+                }
                 return new AsyncStorageAdapter(storageInstance as AsyncAchievementStorage, { onError });
             }
             return storageInstance as AchievementStorage;
@@ -114,15 +131,46 @@ export class AchievementEngine extends EventEmitter {
             const savedMetrics = this.storage.getMetrics() || {};
             const savedUnlocked = this.storage.getUnlockedAchievements() || [];
 
-            // Convert metrics from array format to simple format
-            Object.entries(savedMetrics).forEach(([key, value]) => {
-                this.metrics[key] = Array.isArray(value) ? value[0] : value;
-            });
-
-            this.unlockedAchievements = savedUnlocked;
+            this.applyStoredState(savedMetrics, savedUnlocked);
         } catch (error) {
             this.handleError(error as Error, 'loadFromStorage');
         }
+    }
+
+    /**
+     * Wait for async storage hydration to finish, if the configured storage is async.
+     */
+    private initializeReadyState(): Promise<AchievementSnapshot> {
+        const readyStorage = this.storage as ReadyStorage;
+
+        if (typeof readyStorage.ready !== 'function') {
+            return Promise.resolve(this.getSnapshot());
+        }
+
+        return readyStorage.ready()
+            .then(({ metrics, unlocked }) => {
+                this.applyStoredState(metrics, unlocked);
+                const snapshot = this.getSnapshot();
+                this.emitStateChanged(snapshot);
+                return snapshot;
+            })
+            .catch((error) => {
+                this.handleError(error as Error, 'ready');
+                return this.getSnapshot();
+            });
+    }
+
+    /**
+     * Convert stored array metrics into the engine's simple runtime metric shape.
+     */
+    private applyStoredState(metrics: AchievementMetrics, unlocked: string[]): void {
+        this.metrics = {};
+
+        Object.entries(metrics).forEach(([key, value]) => {
+            this.metrics[key] = Array.isArray(value) ? value[0] : value;
+        });
+
+        this.unlockedAchievements = [...unlocked];
     }
 
     /**
@@ -131,10 +179,7 @@ export class AchievementEngine extends EventEmitter {
     private saveToStorage(): void {
         try {
             // Convert metrics to array format for storage
-            const metricsForStorage: AchievementMetrics = {};
-            Object.entries(this.metrics).forEach(([key, value]) => {
-                metricsForStorage[key] = Array.isArray(value) ? value : [value];
-            });
+            const metricsForStorage = this.getMetricsAsArray();
 
             this.storage.setMetrics(metricsForStorage);
             this.storage.setUnlockedAchievements(this.unlockedAchievements);
@@ -154,7 +199,7 @@ export class AchievementEngine extends EventEmitter {
         };
 
         // Emit error event
-        this.emit<ErrorEvent>('error', errorEvent);
+        super.emit<ErrorEvent>('error', errorEvent);
 
         // Call config error handler if provided
         if (this.config.onError) {
@@ -193,9 +238,7 @@ export class AchievementEngine extends EventEmitter {
      * Update metrics and evaluate achievements
      * @param newMetrics - Metrics to update
      */
-    update<T extends Record<string, any>>(newMetrics: Partial<T>): void {
-        const oldMetrics = { ...this.metrics };
-
+    update<T extends Record<string, any>>(newMetrics: Partial<T>): AchievementUpdateResult {
         // Update metrics
         Object.entries(newMetrics).forEach(([key, value]) => {
             const oldValue = this.metrics[key];
@@ -214,26 +257,39 @@ export class AchievementEngine extends EventEmitter {
         });
 
         // Evaluate achievements
-        this.evaluateAchievements();
+        const newlyUnlocked = this.evaluateAchievements();
 
         // Save to storage
         this.saveToStorage();
 
-        // Emit state changed event
-        const stateEvent: StateChangedEvent = {
-            metrics: this.getMetricsAsArray(),
-            unlocked: [...this.unlockedAchievements],
-            timestamp: Date.now()
+        const snapshot = this.getSnapshot();
+        this.emitStateChanged(snapshot);
+
+        return {
+            newlyUnlocked,
+            snapshot
         };
-        super.emit<StateChangedEvent>('state:changed', stateEvent);
+    }
+
+    /**
+     * Increment a numeric metric by the provided amount.
+     * Non-numeric and missing metric values are treated as 0.
+     */
+    increment(metric: string, amount: number = 1): AchievementUpdateResult {
+        const currentValue = this.metrics[metric];
+        const normalizedValue = Array.isArray(currentValue) ? currentValue[0] : currentValue;
+        const numericValue = typeof normalizedValue === 'number' ? normalizedValue : 0;
+
+        return this.update({ [metric]: numericValue + amount });
     }
 
     /**
      * Evaluate all achievements and unlock any newly met conditions
      * This is the core evaluation logic extracted from AchievementProvider
      */
-    private evaluateAchievements(): void {
+    private evaluateAchievements(): AchievementUnlockedEvent[] {
         const newlyUnlockedAchievements: string[] = [];
+        const newlyUnlockedEvents: AchievementUnlockedEvent[] = [];
 
         // Convert metrics to array format for condition checking
         const metricsInArrayFormat = this.getMetricsAsArray();
@@ -249,7 +305,10 @@ export class AchievementEngine extends EventEmitter {
                 const achievementId = achievement.achievementDetails.achievementId;
 
                 // Check if already unlocked
-                if (this.unlockedAchievements.includes(achievementId)) {
+                if (
+                    this.unlockedAchievements.includes(achievementId) ||
+                    newlyUnlockedAchievements.includes(achievementId)
+                ) {
                     return;
                 }
 
@@ -267,15 +326,13 @@ export class AchievementEngine extends EventEmitter {
                     if (achievement.isConditionMet(valueToCheck, state)) {
                         newlyUnlockedAchievements.push(achievementId);
 
-                        // Emit achievement unlocked event
-                        const unlockEvent: AchievementUnlockedEvent = {
+                        newlyUnlockedEvents.push({
                             achievementId,
                             achievementTitle: achievement.achievementDetails.achievementTitle || 'Achievement Unlocked!',
                             achievementDescription: achievement.achievementDetails.achievementDescription || '',
                             achievementIconKey: achievement.achievementDetails.achievementIconKey,
                             timestamp: Date.now()
-                        };
-                        super.emit<AchievementUnlockedEvent>('achievement:unlocked', unlockEvent);
+                        });
                     }
                 }
             });
@@ -284,7 +341,12 @@ export class AchievementEngine extends EventEmitter {
         // Add newly unlocked achievements to the list
         if (newlyUnlockedAchievements.length > 0) {
             this.unlockedAchievements = [...this.unlockedAchievements, ...newlyUnlockedAchievements];
+            newlyUnlockedEvents.forEach((unlockEvent) => {
+                super.emit<AchievementUnlockedEvent>('achievement:unlocked', unlockEvent);
+            });
         }
+
+        return newlyUnlockedEvents;
     }
 
     /**
@@ -293,9 +355,16 @@ export class AchievementEngine extends EventEmitter {
     private getMetricsAsArray(): AchievementMetrics {
         const metricsInArrayFormat: AchievementMetrics = {};
         Object.entries(this.metrics).forEach(([key, value]) => {
-            metricsInArrayFormat[key] = Array.isArray(value) ? value : [value];
+            metricsInArrayFormat[key] = Array.isArray(value) ? [...value] : [value];
         });
         return metricsInArrayFormat;
+    }
+
+    /**
+     * Wait until the engine has loaded any async storage state.
+     */
+    ready(): Promise<AchievementSnapshot> {
+        return this.readyPromise;
     }
 
     /**
@@ -337,6 +406,37 @@ export class AchievementEngine extends EventEmitter {
     }
 
     /**
+     * Get one React-friendly snapshot of all derived achievement state.
+     */
+    getSnapshot(): AchievementSnapshot {
+        const unlockedIds = [...this.unlockedAchievements];
+        const unlockedIdSet = new Set(unlockedIds);
+        const allAchievements = this.getAllAchievements();
+        const unlockedAchievements = allAchievements.filter((achievement) =>
+            unlockedIdSet.has(achievement.achievementId)
+        );
+
+        return {
+            metrics: this.getMetricsAsArray(),
+            unlockedIds,
+            unlockedAchievements,
+            allAchievements,
+            unlockedCount: unlockedIds.length,
+            totalCount: allAchievements.length
+        };
+    }
+
+    private emitStateChanged(snapshot: AchievementSnapshot): void {
+        const stateEvent: StateChangedEvent = {
+            ...snapshot,
+            unlocked: [...snapshot.unlockedIds],
+            timestamp: Date.now()
+        };
+
+        super.emit<StateChangedEvent>('state:changed', stateEvent);
+    }
+
+    /**
      * Reset all achievement data
      */
     reset(): void {
@@ -349,13 +449,7 @@ export class AchievementEngine extends EventEmitter {
             this.handleError(error as Error, 'reset');
         }
 
-        // Emit state changed event
-        const stateEvent: StateChangedEvent = {
-            metrics: {},
-            unlocked: [],
-            timestamp: Date.now()
-        };
-        super.emit<StateChangedEvent>('state:changed', stateEvent);
+        this.emitStateChanged(this.getSnapshot());
     }
 
     /**
@@ -410,13 +504,7 @@ export class AchievementEngine extends EventEmitter {
             // Save to storage
             this.saveToStorage();
 
-            // Emit state changed event
-            const stateEvent: StateChangedEvent = {
-                metrics: this.getMetricsAsArray(),
-                unlocked: [...this.unlockedAchievements],
-                timestamp: Date.now()
-            };
-            super.emit<StateChangedEvent>('state:changed', stateEvent);
+            this.emitStateChanged(this.getSnapshot());
         }
 
         return result;

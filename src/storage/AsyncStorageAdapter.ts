@@ -1,6 +1,11 @@
 import { AchievementStorage, AsyncAchievementStorage, AchievementMetrics } from '../types';
 import { StorageError, AchievementError } from '../errors/AchievementErrors';
 
+export interface AsyncStorageSnapshot {
+    metrics: AchievementMetrics;
+    unlocked: string[];
+}
+
 export class AsyncStorageAdapter implements AchievementStorage {
     private asyncStorage: AsyncAchievementStorage;
     private cache: {
@@ -10,6 +15,9 @@ export class AsyncStorageAdapter implements AchievementStorage {
     };
     private pendingWrites: Promise<void>[] = [];
     private onError?: (error: AchievementError) => void;
+    private readyPromise: Promise<AsyncStorageSnapshot>;
+    private metricsDirtyBeforeLoad = false;
+    private unlockedDirtyBeforeLoad = false;
 
     constructor(
         asyncStorage: AsyncAchievementStorage,
@@ -24,22 +32,28 @@ export class AsyncStorageAdapter implements AchievementStorage {
         };
 
         // Eagerly load data from async storage (non-blocking)
-        this.initializeCache();
+        this.readyPromise = this.initializeCache();
     }
 
     /**
      * Initialize cache by loading from async storage
      * This happens in the background during construction
      */
-    private async initializeCache(): Promise<void> {
+    private async initializeCache(): Promise<AsyncStorageSnapshot> {
         try {
             const [metrics, unlocked] = await Promise.all([
                 this.asyncStorage.getMetrics(),
                 this.asyncStorage.getUnlockedAchievements()
             ]);
 
-            this.cache.metrics = metrics;
-            this.cache.unlocked = unlocked;
+            if (!this.metricsDirtyBeforeLoad) {
+                this.cache.metrics = metrics;
+            }
+
+            if (!this.unlockedDirtyBeforeLoad) {
+                this.cache.unlocked = unlocked;
+            }
+
             this.cache.loaded = true;
         } catch (error) {
             // Handle initialization errors
@@ -53,6 +67,8 @@ export class AsyncStorageAdapter implements AchievementStorage {
             // Set to empty state on error
             this.cache.loaded = true; // Mark as loaded even on error to prevent blocking
         }
+
+        return this.getSnapshot();
     }
 
     /**
@@ -60,9 +76,37 @@ export class AsyncStorageAdapter implements AchievementStorage {
      * Returns immediately if already loaded, otherwise waits
      */
     private async ensureCacheLoaded(): Promise<void> {
-        while (!this.cache.loaded) {
-            await new Promise(resolve => setTimeout(resolve, 10));
-        }
+        await this.readyPromise;
+    }
+
+    /**
+     * Wait until the initial async storage read has populated the cache.
+     */
+    async ready(): Promise<AsyncStorageSnapshot> {
+        await this.ensureCacheLoaded();
+        return this.getSnapshot();
+    }
+
+    /**
+     * Whether the initial async storage read has completed.
+     */
+    isLoaded(): boolean {
+        return this.cache.loaded;
+    }
+
+    /**
+     * Return a defensive copy of the cached storage state.
+     */
+    getSnapshot(): AsyncStorageSnapshot {
+        const metrics: AchievementMetrics = {};
+        Object.entries(this.cache.metrics).forEach(([key, value]) => {
+            metrics[key] = Array.isArray(value) ? [...value] : value;
+        });
+
+        return {
+            metrics,
+            unlocked: [...this.cache.unlocked]
+        };
     }
 
     /**
@@ -78,6 +122,10 @@ export class AsyncStorageAdapter implements AchievementStorage {
      * Uses optimistic updates - assumes write will succeed
      */
     setMetrics(metrics: AchievementMetrics): void {
+        if (!this.cache.loaded) {
+            this.metricsDirtyBeforeLoad = true;
+        }
+
         // Update cache immediately (optimistic update)
         this.cache.metrics = metrics;
 
@@ -107,6 +155,10 @@ export class AsyncStorageAdapter implements AchievementStorage {
      * SYNC WRITE: Updates cache immediately, writes to storage in background
      */
     setUnlockedAchievements(achievements: string[]): void {
+        if (!this.cache.loaded) {
+            this.unlockedDirtyBeforeLoad = true;
+        }
+
         // Update cache immediately (optimistic update)
         this.cache.unlocked = achievements;
 
@@ -129,6 +181,11 @@ export class AsyncStorageAdapter implements AchievementStorage {
      * SYNC CLEAR: Clears cache immediately, clears storage in background
      */
     clear(): void {
+        if (!this.cache.loaded) {
+            this.metricsDirtyBeforeLoad = true;
+            this.unlockedDirtyBeforeLoad = true;
+        }
+
         // Clear cache immediately
         this.cache.metrics = {};
         this.cache.unlocked = [];
