@@ -7,7 +7,53 @@ import { AchievementEngine } from '../src/AchievementEngine';
 import { MemoryStorage } from '../src/storage/MemoryStorage';
 import { LocalStorage } from '../src/storage/LocalStorage';
 import { createTestEngine, createMockStorage, expectAchievementUnlocked, expectAchievementLocked } from './testUtils';
-import type { EngineConfig, AchievementMetrics } from '../src/types';
+import type { AsyncAchievementStorage, EngineConfig, AchievementMetrics } from '../src/types';
+
+class ControlledAsyncStorage implements AsyncAchievementStorage {
+  private initialMetrics: AchievementMetrics;
+  private initialUnlocked: string[];
+  private releaseInitialRead!: () => void;
+  private initialReadPromise: Promise<void>;
+  persistedMetrics: AchievementMetrics;
+  persistedUnlocked: string[];
+
+  constructor(initialMetrics: AchievementMetrics = {}, initialUnlocked: string[] = []) {
+    this.initialMetrics = initialMetrics;
+    this.initialUnlocked = initialUnlocked;
+    this.persistedMetrics = initialMetrics;
+    this.persistedUnlocked = initialUnlocked;
+    this.initialReadPromise = new Promise((resolve) => {
+      this.releaseInitialRead = resolve;
+    });
+  }
+
+  releaseInitialReads(): void {
+    this.releaseInitialRead();
+  }
+
+  async getMetrics(): Promise<AchievementMetrics> {
+    await this.initialReadPromise;
+    return this.initialMetrics;
+  }
+
+  async setMetrics(metrics: AchievementMetrics): Promise<void> {
+    this.persistedMetrics = metrics;
+  }
+
+  async getUnlockedAchievements(): Promise<string[]> {
+    await this.initialReadPromise;
+    return this.initialUnlocked;
+  }
+
+  async setUnlockedAchievements(achievements: string[]): Promise<void> {
+    this.persistedUnlocked = achievements;
+  }
+
+  async clear(): Promise<void> {
+    this.persistedMetrics = {};
+    this.persistedUnlocked = [];
+  }
+}
 
 describe('AchievementEngine', () => {
   beforeEach(() => {
@@ -111,6 +157,59 @@ describe('AchievementEngine', () => {
     });
   });
 
+  describe('Async Storage Readiness', () => {
+    test('ready() should hydrate engine state from async storage', async () => {
+      const storage = new ControlledAsyncStorage({ score: [100] }, ['score_100']);
+      const engine = new AchievementEngine({
+        achievements: { score: { '100': { title: 'Century Club' } } },
+        storage,
+      });
+      const stateChanged = jest.fn();
+      engine.on('state:changed', stateChanged);
+
+      expect(engine.getMetrics()).toEqual({});
+      expect(engine.getUnlocked()).toEqual([]);
+
+      storage.releaseInitialReads();
+      const snapshot = await engine.ready();
+
+      expect(engine.getMetrics().score).toBe(100);
+      expect(engine.getUnlocked()).toEqual(['score_100']);
+      expect(snapshot.metrics).toEqual({ score: [100] });
+      expect(snapshot.unlockedIds).toEqual(['score_100']);
+      expect(snapshot.unlockedCount).toBe(1);
+      expect(stateChanged).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metrics: { score: [100] },
+          unlocked: ['score_100'],
+          unlockedIds: ['score_100'],
+          unlockedCount: 1,
+          totalCount: 1,
+        })
+      );
+    });
+
+    test('ready() should not overwrite optimistic updates made before async storage loads', async () => {
+      const storage = new ControlledAsyncStorage({ score: [10] }, []);
+      const engine = new AchievementEngine({
+        achievements: { score: { '100': { title: 'Century Club' } } },
+        storage,
+      });
+
+      engine.update({ score: 100 });
+
+      storage.releaseInitialReads();
+      const snapshot = await engine.ready();
+
+      expect(engine.getMetrics().score).toBe(100);
+      expect(engine.getUnlocked()).toEqual(['score_100']);
+      expect(snapshot.metrics).toEqual({ score: [100] });
+      expect(snapshot.unlockedIds).toEqual(['score_100']);
+      expect(storage.persistedMetrics).toEqual({ score: [100] });
+      expect(storage.persistedUnlocked).toEqual(['score_100']);
+    });
+  });
+
   describe('Metric Updates (Direct)', () => {
     test('update() should update single metric', () => {
       const engine = createTestEngine();
@@ -182,6 +281,49 @@ describe('AchievementEngine', () => {
         })
       );
     });
+
+    test('update() should return newly unlocked achievements and a snapshot', () => {
+      const engine = new AchievementEngine({
+        achievements: {
+          score: { '100': { title: 'Century Club' } },
+        },
+      });
+
+      const result = engine.update({ score: 100 });
+
+      expect(result.newlyUnlocked).toHaveLength(1);
+      expect(result.newlyUnlocked[0].achievementId).toBe('score_100');
+      expect(result.snapshot.metrics).toEqual({ score: [100] });
+      expect(result.snapshot.unlockedIds).toEqual(['score_100']);
+      expect(result.snapshot.unlockedCount).toBe(1);
+      expect(result.snapshot.totalCount).toBe(1);
+    });
+
+    test('increment() should update numeric metrics by the provided amount', () => {
+      const engine = new AchievementEngine({
+        achievements: {
+          score: { '100': { title: 'Century Club' } },
+        },
+      });
+
+      engine.increment('score', 40);
+      const result = engine.increment('score', 60);
+
+      expect(engine.getMetrics().score).toBe(100);
+      expect(result.newlyUnlocked[0].achievementId).toBe('score_100');
+      expect(result.snapshot.metrics.score).toEqual([100]);
+    });
+
+    test('increment() should treat missing or non-number metrics as 0', () => {
+      const engine = createTestEngine();
+
+      engine.update({ score: 'not-a-number' });
+      engine.increment('score', 5);
+      engine.increment('clicks');
+
+      expect(engine.getMetrics().score).toBe(5);
+      expect(engine.getMetrics().clicks).toBe(1);
+    });
   });
 
   describe('Achievement Evaluation', () => {
@@ -199,6 +341,33 @@ describe('AchievementEngine', () => {
 
       expect(handler).toHaveBeenCalled();
       expectAchievementUnlocked(engine, 'score_100');
+    });
+
+    test('achievement:unlocked handlers should see updated engine state', () => {
+      const engine = new AchievementEngine({
+        achievements: {
+          score: { '100': { title: 'Century Club' } },
+        },
+      });
+      const observedState: Array<{
+        unlocked: readonly string[];
+        isUnlocked?: boolean;
+      }> = [];
+
+      engine.on('achievement:unlocked', (event) => {
+        observedState.push({
+          unlocked: engine.getUnlocked(),
+          isUnlocked: engine
+            .getAllAchievements()
+            .find((achievement) => achievement.achievementId === event.achievementId)?.isUnlocked,
+        });
+      });
+
+      engine.update({ score: 100 });
+
+      expect(observedState).toHaveLength(1);
+      expect(observedState[0].unlocked).toContain('score_100');
+      expect(observedState[0].isUnlocked).toBe(true);
     });
 
     test('update() should unlock boolean achievement', () => {
@@ -491,6 +660,29 @@ describe('AchievementEngine', () => {
           isUnlocked: expect.any(Boolean),
         })
       );
+    });
+
+    test('getSnapshot() should return derived achievement state in one read', () => {
+      const engine = new AchievementEngine({
+        achievements: {
+          score: {
+            '50': { title: 'Beginner' },
+            '100': { title: 'Century' },
+          },
+        },
+      });
+
+      engine.update({ score: 75 });
+      const snapshot = engine.getSnapshot();
+
+      expect(snapshot.metrics).toEqual({ score: [75] });
+      expect(snapshot.unlockedIds).toEqual(['score_50']);
+      expect(snapshot.unlockedAchievements.map((achievement) => achievement.achievementId)).toEqual([
+        'score_50',
+      ]);
+      expect(snapshot.allAchievements).toHaveLength(2);
+      expect(snapshot.unlockedCount).toBe(1);
+      expect(snapshot.totalCount).toBe(2);
     });
   });
 

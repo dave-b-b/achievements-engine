@@ -48,6 +48,52 @@ class MockAsyncStorage implements AsyncAchievementStorage {
   }
 }
 
+class ControlledAsyncStorage implements AsyncAchievementStorage {
+  private initialMetrics: AchievementMetrics;
+  private initialUnlocked: string[];
+  private releaseInitialRead!: () => void;
+  private initialReadPromise: Promise<void>;
+  persistedMetrics: AchievementMetrics;
+  persistedUnlocked: string[];
+
+  constructor(initialMetrics: AchievementMetrics = {}, initialUnlocked: string[] = []) {
+    this.initialMetrics = initialMetrics;
+    this.initialUnlocked = initialUnlocked;
+    this.persistedMetrics = initialMetrics;
+    this.persistedUnlocked = initialUnlocked;
+    this.initialReadPromise = new Promise((resolve) => {
+      this.releaseInitialRead = resolve;
+    });
+  }
+
+  releaseInitialReads(): void {
+    this.releaseInitialRead();
+  }
+
+  async getMetrics(): Promise<AchievementMetrics> {
+    await this.initialReadPromise;
+    return this.initialMetrics;
+  }
+
+  async setMetrics(metrics: AchievementMetrics): Promise<void> {
+    this.persistedMetrics = metrics;
+  }
+
+  async getUnlockedAchievements(): Promise<string[]> {
+    await this.initialReadPromise;
+    return this.initialUnlocked;
+  }
+
+  async setUnlockedAchievements(achievements: string[]): Promise<void> {
+    this.persistedUnlocked = achievements;
+  }
+
+  async clear(): Promise<void> {
+    this.persistedMetrics = {};
+    this.persistedUnlocked = [];
+  }
+}
+
 describe('AsyncStorageAdapter', () => {
   let mockStorage: MockAsyncStorage;
   let adapter: AsyncStorageAdapter;
@@ -96,6 +142,44 @@ describe('AsyncStorageAdapter', () => {
 
     expect(metrics).toEqual({ score: [100] });
     expect(unlocked).toEqual(['achievement1']);
+  });
+
+  test('ready() should resolve with the loaded cache state', async () => {
+    const controlledStorage = new ControlledAsyncStorage({ score: [100] }, ['achievement1']);
+    const controlledAdapter = new AsyncStorageAdapter(controlledStorage);
+
+    expect(controlledAdapter.isLoaded()).toBe(false);
+
+    controlledStorage.releaseInitialReads();
+    const snapshot = await controlledAdapter.ready();
+
+    expect(controlledAdapter.isLoaded()).toBe(true);
+    expect(snapshot).toEqual({
+      metrics: { score: [100] },
+      unlocked: ['achievement1'],
+    });
+    expect(controlledAdapter.getMetrics()).toEqual({ score: [100] });
+    expect(controlledAdapter.getUnlockedAchievements()).toEqual(['achievement1']);
+  });
+
+  test('should not overwrite optimistic writes when initial load resolves later', async () => {
+    const controlledStorage = new ControlledAsyncStorage({ score: [10] }, ['stale']);
+    const controlledAdapter = new AsyncStorageAdapter(controlledStorage);
+
+    controlledAdapter.setMetrics({ score: [100] });
+    controlledAdapter.setUnlockedAchievements(['fresh']);
+    controlledStorage.releaseInitialReads();
+
+    const snapshot = await controlledAdapter.ready();
+
+    expect(snapshot).toEqual({
+      metrics: { score: [100] },
+      unlocked: ['fresh'],
+    });
+    expect(controlledAdapter.getMetrics()).toEqual({ score: [100] });
+    expect(controlledAdapter.getUnlockedAchievements()).toEqual(['fresh']);
+    expect(controlledStorage.persistedMetrics).toEqual({ score: [100] });
+    expect(controlledStorage.persistedUnlocked).toEqual(['fresh']);
   });
 
   test('should persist in background', async () => {

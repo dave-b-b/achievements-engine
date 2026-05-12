@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `AchievementEngine.ready()` for async storage hydration.
+- `AchievementEngine.getSnapshot()` for one-read derived achievement state.
+- `AchievementEngine.increment()` for cumulative numeric metric updates.
+
+### Fixed
+- Async storage hydration now updates engine state after the adapter cache loads.
+- `achievement:unlocked` handlers now see updated unlocked state immediately.
+
 ## [1.1.2] - 2025-12-30
 - Add tests for achievement builder
 - fix documentation for achievement builder

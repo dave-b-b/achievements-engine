@@ -41,6 +41,8 @@ export type {
     RestApiStorageConfig,
     EngineConfig,
     AchievementEngineApi,
+    AchievementSnapshot,
+    AchievementUpdateResult,
 
     // Import/Export types
     ImportOptions,
