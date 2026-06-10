@@ -1,15 +1,16 @@
 # achievements-engine
 
-A framework-agnostic achievement system with event-based architecture. Perfect for adding gamification features to any JavaScript application.
+A server-first achievement engine with framework-agnostic rule evaluation, persistence hooks, and REST-contract helpers for React or any other client.
 
 ## Features
 
 - 🎯 **Event-Based**: Track achievements using custom events or direct metric updates
-- 🔄 **Framework Agnostic**: Works with React, Vue, Angular, Node.js, or vanilla JavaScript
-- 💾 **Flexible Storage**: Built-in support for Memory, LocalStorage, IndexedDB, and REST API
+- 🖥️ **Server First**: Evaluate achievements on your app server and persist to your database
+- 🔄 **Framework Agnostic**: Works behind React, Vue, Angular, Rails, mobile apps, or any REST client
+- 💾 **Repository-Based**: Bring your own database adapter or start with `MemoryAchievementRepository`
 - 📦 **Zero Dependencies**: Lightweight core with no external dependencies
 - 🎨 **TypeScript**: Full TypeScript support with comprehensive type definitions
-- 🔌 **Extensible**: Easy to add custom storage backends and achievement conditions
+- 🔌 **Extensible**: Easy to add custom repositories, route handlers, and achievement conditions
 
 ## Installation
 
@@ -17,7 +18,81 @@ A framework-agnostic achievement system with event-based architecture. Perfect f
 npm install achievements-engine
 ```
 
-## Quick Start
+## Server Quick Start
+
+```typescript
+import {
+  AchievementService,
+  MemoryAchievementRepository,
+  createAchievementFetchHandler,
+} from 'achievements-engine/server';
+
+const achievements = {
+  score: {
+    100: { title: 'Century!', description: 'Score 100 points', icon: 'trophy' },
+  },
+  completedLesson: {
+    true: { title: 'First Lesson', description: 'Complete a lesson', icon: 'book' },
+  },
+};
+
+const service = new AchievementService({
+  achievements,
+  repository: new MemoryAchievementRepository(),
+  eventMapping: {
+    'lesson.completed': () => ({ completedLesson: true }),
+  },
+});
+
+export const handleAchievementsRequest = createAchievementFetchHandler({
+  service,
+  basePath: '/api/achievements',
+  getSubjectId: (request) => getUserIdFromSession(request),
+});
+```
+
+The fetch handler implements the shared REST contract used by `react-achievements`:
+
+```http
+GET  /api/achievements
+POST /api/achievements/track
+POST /api/achievements/increment
+POST /api/achievements/event
+POST /api/achievements/reset
+```
+
+You can also call the service directly from Express, Fastify, Next.js route handlers, background jobs, or tests:
+
+```typescript
+await service.track(user.id, { metric: 'score', value: 100 });
+await service.increment(user.id, { metric: 'score', amount: 10 });
+await service.event(user.id, { name: 'lesson.completed', payload: { lessonId: 'intro' } });
+const snapshot = await service.getSnapshot(user.id);
+```
+
+## Repository Interface
+
+Production apps should persist achievement state in their own database:
+
+```typescript
+import type { AchievementRepository, StoredAchievementState } from 'achievements-engine/server';
+
+class PrismaAchievementRepository implements AchievementRepository {
+  async getState(subjectId: string): Promise<StoredAchievementState | undefined> {
+    // Load metrics, unlocked IDs, and unlocked timestamps from your database.
+  }
+
+  async saveState(subjectId: string, state: StoredAchievementState): Promise<void> {
+    // Persist the updated state in the same database your app already uses.
+  }
+}
+```
+
+Authentication stays in your app. Pass the authenticated user/account/team ID to `AchievementService` as the `subjectId`.
+
+## Legacy In-Process Engine
+
+The original in-process `AchievementEngine` remains available for browser-only or embedded JavaScript use cases:
 
 ```typescript
 import { AchievementEngine } from 'achievements-engine';
