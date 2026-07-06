@@ -6,6 +6,7 @@
 // Core engine
 export { AchievementEngine } from './AchievementEngine';
 export { EventEmitter } from './EventEmitter';
+export { AchievementService } from './AchievementService';
 
 // Types
 export type {
@@ -15,6 +16,7 @@ export type {
     AchievementMetrics,
     AchievementDetails,
     AchievementWithStatus,
+    AchievementConfetti,
     AchievementCondition,
     AchievementConfiguration,
     SimpleAchievementDetails,
@@ -52,6 +54,22 @@ export type {
     UnsubscribeFn
 } from './types';
 
+export type {
+    AchievementApiSnapshot,
+    AchievementClient,
+    AchievementDto,
+    AchievementEventInput,
+    AchievementMutationResult,
+    AchievementProgress,
+    AchievementRepository,
+    AchievementServiceConfig,
+    AchievementSubjectId,
+    IncrementAchievementInput,
+    StoredAchievementState,
+    TrackAchievementInput,
+    TrackManyAchievementsInput,
+} from './contracts';
+
 // Storage implementations
 export { LocalStorage } from './storage/LocalStorage';
 export { MemoryStorage } from './storage/MemoryStorage';
@@ -59,6 +77,7 @@ export { IndexedDBStorage } from './storage/IndexedDBStorage';
 export { RestApiStorage } from './storage/RestApiStorage';
 export { AsyncStorageAdapter } from './storage/AsyncStorageAdapter';
 export { OfflineQueueStorage } from './storage/OfflineQueueStorage';
+export { MemoryAchievementRepository } from './repository/MemoryAchievementRepository';
 
 // Storage enum
 export { StorageType, isAsyncStorage } from './types';

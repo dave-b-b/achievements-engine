@@ -23,11 +23,6 @@ export function isSimpleConfig(config: AchievementConfigurationType): config is 
     return typeof firstValue === 'object' && !Array.isArray(firstValue);
 }
 
-// Generate a unique ID for achievements
-function generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
-}
-
 // Check if achievement details has a custom condition
 function hasCustomCondition(details: SimpleAchievementDetails | CustomAchievementDetails): details is CustomAchievementDetails {
     return 'condition' in details && typeof details.condition === 'function';
@@ -56,10 +51,11 @@ export function normalizeAchievements(config: AchievementConfigurationType): Ach
                         return achievement.condition(simpleMetrics);
                     },
                     achievementDetails: {
-                        achievementId: `${metric}_custom_${generateId()}`,
+                        achievementId: `${metric}_custom_${key}`,
                         achievementTitle: achievement.title,
                         achievementDescription: achievement.description || '',
-                        achievementIconKey: achievement.icon || 'default'
+                        achievementIconKey: achievement.icon || 'default',
+                        confetti: achievement.confetti
                     }
                 };
             } else {
@@ -95,7 +91,8 @@ export function normalizeAchievements(config: AchievementConfigurationType): Ach
                         achievementId: `${metric}_${key}`,
                         achievementTitle: achievement.title,
                         achievementDescription: achievement.description || (isValidThreshold ? `Reach ${threshold} ${metric}` : `Achieve ${key} for ${metric}`),
-                        achievementIconKey: achievement.icon || 'default'
+                        achievementIconKey: achievement.icon || 'default',
+                        confetti: achievement.confetti
                     }
                 } as AchievementCondition;
             }

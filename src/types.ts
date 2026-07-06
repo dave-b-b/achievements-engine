@@ -26,6 +26,7 @@ export interface AchievementDetails {
     achievementTitle: string;
     achievementDescription: string;
     achievementIconKey?: string;
+    confetti?: AchievementConfetti;
 }
 
 export interface AchievementWithStatus extends AchievementDetails {
@@ -46,6 +47,7 @@ export interface SimpleAchievementDetails {
     title: string;
     description?: string;
     icon?: string;
+    confetti?: AchievementConfetti;
 }
 
 export interface CustomAchievementDetails extends SimpleAchievementDetails {
@@ -57,6 +59,8 @@ export interface SimpleAchievementConfig {
         [threshold: string]: SimpleAchievementDetails | CustomAchievementDetails;
     };
 }
+
+export type AchievementConfetti = false | Record<string, unknown>;
 
 // Union type for backward compatibility
 export type AchievementConfigurationType = AchievementConfiguration | SimpleAchievementConfig;
