@@ -23,9 +23,22 @@ class TestResponse {
 const achievements = {
   score: {
     100: { title: 'Century', description: 'Score 100 points', icon: 'trophy' },
+    1000: {
+      title: 'Grand',
+      description: 'Score 1,000 points',
+      icon: 'crown',
+      confetti: { particleCount: 200 },
+    },
   },
   completedLesson: {
     true: { title: 'First Lesson', description: 'Complete a lesson', icon: 'book' },
+  },
+  combo: {
+    perfect: {
+      title: 'Perfect Combo',
+      icon: 'spark',
+      condition: (metrics: Record<string, unknown>) => metrics.score === 1000,
+    },
   },
 };
 
@@ -60,7 +73,34 @@ describe('AchievementService', () => {
 
     const snapshot = await service.getSnapshot('user-1');
     expect(snapshot.unlockedCount).toBe(1);
-    expect(snapshot.achievements).toHaveLength(2);
+    expect(snapshot.achievements).toHaveLength(4);
+  });
+
+  it('preserves reward confetti and stable custom achievement IDs in snapshots', async () => {
+    const service = new AchievementService({
+      achievements,
+      repository: new MemoryAchievementRepository(),
+    });
+
+    const result = await service.track('user-1', { metric: 'score', value: 1000 });
+
+    expect(result.snapshot.achievements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'score_1000',
+          confetti: { particleCount: 200 },
+        }),
+        expect.objectContaining({
+          id: 'combo_custom_perfect',
+          title: 'Perfect Combo',
+        }),
+      ])
+    );
+    expect(result.newlyUnlocked.map((achievement) => achievement.id)).toEqual([
+      'score_100',
+      'score_1000',
+      'combo_custom_perfect',
+    ]);
   });
 
   it('increments metrics and maps semantic events on the server', async () => {
@@ -108,5 +148,32 @@ describe('AchievementService', () => {
 
     expect(response.status).toBe(200);
     expect(body.newlyUnlocked[0].id).toBe('score_100');
+  });
+
+  it('returns 400 for malformed mutation request bodies', async () => {
+    const repository = new MemoryAchievementRepository();
+    const service = new AchievementService({
+      achievements,
+      repository,
+    });
+    const handler = createAchievementFetchHandler({
+      service,
+      basePath: '/api/achievements',
+      getSubjectId: () => 'user-1',
+    });
+
+    const response = await handler({
+      url: 'https://example.com/api/achievements/track',
+      method: 'POST',
+      json: async () => ({}),
+    } as Request);
+
+    expect(response.status).toBe(400);
+    expect(await service.getSnapshot('user-1')).toEqual(
+      expect.objectContaining({
+        metrics: {},
+        unlockedIds: [],
+      })
+    );
   });
 });

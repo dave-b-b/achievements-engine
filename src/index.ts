@@ -16,6 +16,7 @@ export type {
     AchievementMetrics,
     AchievementDetails,
     AchievementWithStatus,
+    AchievementConfetti,
     AchievementCondition,
     AchievementConfiguration,
     SimpleAchievementDetails,

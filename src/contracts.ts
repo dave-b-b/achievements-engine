@@ -1,4 +1,5 @@
 import type {
+    AchievementConfetti,
     AchievementConfigurationType,
     EventMapping,
 } from './types';
@@ -21,6 +22,7 @@ export interface AchievementDto {
     unlockedAt?: string | null;
     progress?: AchievementProgress;
     metadata?: Record<string, unknown>;
+    confetti?: AchievementConfetti;
 }
 
 export interface AchievementApiSnapshot {

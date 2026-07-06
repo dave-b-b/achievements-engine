@@ -236,6 +236,7 @@ export class AchievementService {
             iconKey: details.achievementIconKey,
             isUnlocked,
             unlockedAt: unlockedAt || null,
+            confetti: details.confetti,
         };
     }
 }
