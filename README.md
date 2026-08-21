@@ -70,6 +70,13 @@ await service.event(user.id, { name: 'lesson.completed', payload: { lessonId: 'i
 const snapshot = await service.getSnapshot(user.id);
 ```
 
+Numeric Simple API thresholds include progress automatically:
+
+```ts
+const century = snapshot.achievements.find(({ id }) => id === 'score_100');
+// century.progress => { current: 40, target: 100, percent: 40 }
+```
+
 ## Repository Interface
 
 Production apps should persist achievement state in their own database:
@@ -85,10 +92,16 @@ class PrismaAchievementRepository implements AchievementRepository {
   async saveState(subjectId: string, state: StoredAchievementState): Promise<void> {
     // Persist the updated state in the same database your app already uses.
   }
+
+  async withTransaction(subjectId: string, run: () => Promise<unknown>) {
+    // Run mutations for one subject inside a database transaction or lock.
+    return run();
+  }
 }
 ```
 
 Authentication stays in your app. Pass the authenticated user/account/team ID to `AchievementService` as the `subjectId`.
+Production repositories should implement `withTransaction` so concurrent increments cannot overwrite one another. The built-in memory repository serializes mutations per subject.
 
 ## Legacy In-Process Engine
 
@@ -223,7 +236,9 @@ const engine = new AchievementEngine({
 });
 ```
 
-### REST API
+### Legacy REST API Storage
+
+> `RestApiStorage` uses the older split-state `/users/:id/achievements/metrics` and `/unlocked` protocol. It is not the shared REST contract used by `AchievementService`, `createAchievementFetchHandler`, and `react-achievements`. New applications should use the server quick start above.
 ```typescript
 const engine = new AchievementEngine({
   achievements,

@@ -26,4 +26,4 @@ export class MemoryStorage implements AchievementStorage {
     this.metrics = {};
     this.unlockedAchievements = [];
   }
-} 
+}

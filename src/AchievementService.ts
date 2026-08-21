@@ -108,13 +108,19 @@ export class AchievementService {
     }
 
     async reset(subjectId: AchievementSubjectId): Promise<AchievementApiSnapshot> {
-        if (this.repository.clearState) {
-            await this.repository.clearState(subjectId);
-        } else {
-            await this.repository.saveState(subjectId, emptyState());
-        }
+        const run = async () => {
+            if (this.repository.clearState) {
+                await this.repository.clearState(subjectId);
+            } else {
+                await this.repository.saveState(subjectId, emptyState());
+            }
 
-        return this.getSnapshot(subjectId);
+            return this.toSnapshot(emptyState());
+        };
+
+        return this.repository.withTransaction
+            ? this.repository.withTransaction(subjectId, run)
+            : run();
     }
 
     private async mutate(
@@ -190,7 +196,7 @@ export class AchievementService {
                     state.unlockedIds.push(achievementId);
                     unlockedIds.add(achievementId);
                     unlockedAt[achievementId] = unlockedAtValue;
-                    newlyUnlocked.push(this.toDto(achievement, true, unlockedAtValue));
+                    newlyUnlocked.push(this.toDto(achievement, true, unlockedAtValue, state));
                 }
             });
         });
@@ -201,9 +207,14 @@ export class AchievementService {
     private toSnapshot(state: StoredAchievementState): AchievementApiSnapshot {
         const unlockedIds = [...state.unlockedIds];
         const unlockedIdSet = new Set(unlockedIds);
-        const achievements = this.getAchievementConditions().map((achievement) => {
+        const achievements = this.getAchievementConditions().map(({ achievement }) => {
             const id = achievement.achievementDetails.achievementId;
-            return this.toDto(achievement, unlockedIdSet.has(id), state.unlockedAt?.[id] || null);
+            return this.toDto(
+                achievement,
+                unlockedIdSet.has(id),
+                state.unlockedAt?.[id] || null,
+                state
+            );
         });
         const unlockedAchievements = achievements.filter((achievement) => achievement.isUnlocked);
 
@@ -217,16 +228,34 @@ export class AchievementService {
         };
     }
 
-    private getAchievementConditions(): AchievementCondition[] {
-        return Object.values(this.achievements).flatMap((metricAchievements) => metricAchievements);
+    private getAchievementConditions(): Array<{ metricName: string; achievement: AchievementCondition }> {
+        return Object.entries(this.achievements).flatMap(([metricName, metricAchievements]) =>
+            metricAchievements.map((achievement) => ({ metricName, achievement }))
+        );
     }
 
     private toDto(
         achievement: AchievementCondition,
         isUnlocked: boolean,
-        unlockedAt?: string | null
+        unlockedAt?: string | null,
+        state?: StoredAchievementState
     ): AchievementDto {
         const details = achievement.achievementDetails;
+        const progressDefinition = achievement.progress;
+        const rawCurrent = progressDefinition && state
+            ? state.metrics[progressDefinition.metric]
+            : undefined;
+        const current = typeof rawCurrent === 'number' ? rawCurrent : 0;
+        const target = progressDefinition?.target;
+        const progress = target === undefined
+            ? undefined
+            : {
+                current,
+                target,
+                percent: isUnlocked
+                    ? 100
+                    : Math.max(0, Math.min(100, target <= 0 ? 100 : (current / target) * 100)),
+            };
 
         return {
             id: details.achievementId,
@@ -236,6 +265,8 @@ export class AchievementService {
             iconKey: details.achievementIconKey,
             isUnlocked,
             unlockedAt: unlockedAt || null,
+            progress,
+            metadata: details.metadata,
             confetti: details.confetti,
         };
     }

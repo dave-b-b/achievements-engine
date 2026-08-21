@@ -325,6 +325,7 @@ export class AchievementEngine extends EventEmitter {
 
                     if (achievement.isConditionMet(valueToCheck, state)) {
                         newlyUnlockedAchievements.push(achievementId);
+                        this.unlockedAchievements.push(achievementId);
 
                         newlyUnlockedEvents.push({
                             achievementId,
@@ -338,9 +339,9 @@ export class AchievementEngine extends EventEmitter {
             });
         });
 
-        // Add newly unlocked achievements to the list
+        // Emit after evaluation so dependent achievements can observe unlocks
+        // from earlier conditions in the same update.
         if (newlyUnlockedAchievements.length > 0) {
-            this.unlockedAchievements = [...this.unlockedAchievements, ...newlyUnlockedAchievements];
             newlyUnlockedEvents.forEach((unlockEvent) => {
                 super.emit<AchievementUnlockedEvent>('achievement:unlocked', unlockEvent);
             });
@@ -391,13 +392,25 @@ export class AchievementEngine extends EventEmitter {
             metricAchievements.forEach((achievement) => {
                 const { achievementDetails } = achievement;
                 const isUnlocked = this.unlockedAchievements.includes(achievementDetails.achievementId);
+                const progressDefinition = achievement.progress;
+                const rawCurrent = progressDefinition
+                    ? this.metrics[progressDefinition.metric]
+                    : undefined;
+                const current = typeof rawCurrent === 'number' ? rawCurrent : 0;
+                const target = progressDefinition?.target;
 
                 result.push({
-                    achievementId: achievementDetails.achievementId,
+                    ...achievementDetails,
                     achievementTitle: achievementDetails.achievementTitle || '',
                     achievementDescription: achievementDetails.achievementDescription || '',
-                    achievementIconKey: achievementDetails.achievementIconKey,
-                    isUnlocked
+                    isUnlocked,
+                    progress: target === undefined ? undefined : {
+                        current,
+                        target,
+                        percent: isUnlocked
+                            ? 100
+                            : Math.max(0, Math.min(100, target <= 0 ? 100 : (current / target) * 100)),
+                    },
                 });
             });
         });

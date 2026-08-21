@@ -22,7 +22,12 @@ class TestResponse {
 
 const achievements = {
   score: {
-    100: { title: 'Century', description: 'Score 100 points', icon: 'trophy' },
+    100: {
+      title: 'Century',
+      description: 'Score 100 points',
+      icon: 'trophy',
+      metadata: { category: 'score' },
+    },
     1000: {
       title: 'Grand',
       description: 'Score 1,000 points',
@@ -66,10 +71,23 @@ describe('AchievementService', () => {
         title: 'Century',
         isUnlocked: true,
         unlockedAt: '2026-01-01T00:00:00.000Z',
+        metadata: { category: 'score' },
       }),
     ]);
     expect(result.snapshot.unlockedIds).toEqual(['score_100']);
     expect(result.snapshot.metrics).toEqual({ score: 100 });
+    expect(result.snapshot.achievements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'score_100',
+          progress: { current: 100, target: 100, percent: 100 },
+        }),
+        expect.objectContaining({
+          id: 'score_1000',
+          progress: { current: 100, target: 1000, percent: 10 },
+        }),
+      ])
+    );
 
     const snapshot = await service.getSnapshot('user-1');
     expect(snapshot.unlockedCount).toBe(1);
@@ -126,6 +144,48 @@ describe('AchievementService', () => {
       'score_100',
       'completedLesson_true',
     ]);
+  });
+
+  it('serializes concurrent mutations for the same subject', async () => {
+    const service = new AchievementService({
+      achievements,
+      repository: new MemoryAchievementRepository(),
+    });
+
+    await Promise.all([
+      service.increment('user-1', { metric: 'score' }),
+      service.increment('user-1', { metric: 'score' }),
+    ]);
+
+    expect((await service.getSnapshot('user-1')).metrics).toEqual({ score: 2 });
+  });
+
+  it('lets dependent achievements observe unlocks from the same update', async () => {
+    const service = new AchievementService({
+      achievements: {
+        score: [{
+          isConditionMet: (value) => value === 1,
+          achievementDetails: {
+            achievementId: 'first',
+            achievementTitle: 'First',
+            achievementDescription: '',
+          },
+        }],
+        chain: [{
+          isConditionMet: (_value, state) => state.unlockedAchievements.includes('first'),
+          achievementDetails: {
+            achievementId: 'second',
+            achievementTitle: 'Second',
+            achievementDescription: '',
+          },
+        }],
+      },
+      repository: new MemoryAchievementRepository(),
+    });
+
+    const result = await service.track('user-1', { metrics: { score: 1, chain: true } });
+
+    expect(result.snapshot.unlockedIds).toEqual(['first', 'second']);
   });
 
   it('creates a fetch handler for the shared REST contract', async () => {

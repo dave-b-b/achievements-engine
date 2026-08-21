@@ -1,6 +1,6 @@
-import { 
-    AchievementConfiguration, 
-    SimpleAchievementConfig, 
+import {
+    AchievementConfiguration,
+    SimpleAchievementConfig,
     AchievementConfigurationType,
     SimpleAchievementDetails,
     CustomAchievementDetails,
@@ -10,15 +10,15 @@ import {
 // Type guard to check if config is simple format
 export function isSimpleConfig(config: AchievementConfigurationType): config is SimpleAchievementConfig {
     if (!config || typeof config !== 'object') return false;
-    
+
     const firstKey = Object.keys(config)[0];
     if (!firstKey) return true; // Empty config is considered simple
-    
+
     const firstValue = config[firstKey];
-    
+
     // Check if it's the current complex format (array of AchievementCondition)
     if (Array.isArray(firstValue)) return false;
-    
+
     // Check if it's the simple format (object with string keys)
     return typeof firstValue === 'object' && !Array.isArray(firstValue);
 }
@@ -34,9 +34,9 @@ export function normalizeAchievements(config: AchievementConfigurationType): Ach
         // Already in complex format, return as-is
         return config as AchievementConfiguration;
     }
-    
+
     const normalized: AchievementConfiguration = {};
-    
+
     Object.entries(config).forEach(([metric, achievements]) => {
         normalized[metric] = Object.entries(achievements).map(([key, achievement]) => {
             if (hasCustomCondition(achievement)) {
@@ -55,16 +55,17 @@ export function normalizeAchievements(config: AchievementConfigurationType): Ach
                         achievementTitle: achievement.title,
                         achievementDescription: achievement.description || '',
                         achievementIconKey: achievement.icon || 'default',
-                        confetti: achievement.confetti
+                        confetti: achievement.confetti,
+                        metadata: achievement.metadata
                     }
                 };
             } else {
                 // Threshold-based achievement
                 const threshold = parseFloat(key);
                 const isValidThreshold = !isNaN(threshold);
-                
+
                 let conditionMet: (value: any) => boolean;
-                
+
                 if (isValidThreshold) {
                     // Numeric threshold
                     conditionMet = (value) => {
@@ -75,29 +76,31 @@ export function normalizeAchievements(config: AchievementConfigurationType): Ach
                     // String or boolean threshold
                     conditionMet = (value) => {
                         const actualValue = Array.isArray(value) ? value[0] : value;
-                        
+
                         // Handle boolean thresholds
                         if (key === 'true') return actualValue === true;
                         if (key === 'false') return actualValue === false;
-                        
+
                         // Handle string thresholds
                         return actualValue === key;
                     };
                 }
-                
+
                 return {
                     isConditionMet: conditionMet,
+                    progress: isValidThreshold ? { metric, target: threshold } : undefined,
                     achievementDetails: {
                         achievementId: `${metric}_${key}`,
                         achievementTitle: achievement.title,
                         achievementDescription: achievement.description || (isValidThreshold ? `Reach ${threshold} ${metric}` : `Achieve ${key} for ${metric}`),
                         achievementIconKey: achievement.icon || 'default',
-                        confetti: achievement.confetti
+                        confetti: achievement.confetti,
+                        metadata: achievement.metadata
                     }
                 } as AchievementCondition;
             }
         });
     });
-    
+
     return normalized;
 }

@@ -1,6 +1,11 @@
 import { AsyncAchievementStorage, AchievementMetrics } from '../types';
 import { StorageError, SyncError, AchievementError } from '../errors/AchievementErrors';
 
+/**
+ * @deprecated Legacy split-state storage protocol. For new server-backed apps,
+ * use AchievementService and createAchievementFetchHandler from
+ * achievements-engine/server with an AchievementClient in the UI.
+ */
 export interface RestApiStorageConfig {
     baseUrl: string;              // e.g., 'https://api.example.com'
     userId: string;               // User identifier
@@ -8,6 +13,7 @@ export interface RestApiStorageConfig {
     timeout?: number;             // Request timeout in ms (default: 10000)
 }
 
+/** @deprecated Uses the legacy /users/:id/achievements/{metrics,unlocked} protocol. */
 export class RestApiStorage implements AsyncAchievementStorage {
     private config: Required<RestApiStorageConfig>;
 
