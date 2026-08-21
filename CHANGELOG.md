@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Numeric Simple API achievements now return `{ current, target, percent }` progress in service and in-process snapshots.
+- Simple achievement metadata is preserved in server DTOs.
+
+### Fixed
+- `MemoryAchievementRepository` serializes mutations per subject so concurrent increments are not lost.
+- Dependent conditions can observe achievements unlocked earlier in the same evaluation pass in both engine modes.
+- Configuration hashes now include custom condition functions and use stable object-key ordering.
+
+### Deprecated
+- `RestApiStorage` and `restApiConfig` use the legacy split-state REST protocol. New server-backed applications should use `AchievementService` and `createAchievementFetchHandler`.
+
+## [2.0.0] - 2026-07-07
+
+### Added
+- `AchievementService`, repository contracts, and framework-neutral fetch handlers for server-authoritative achievements.
+- Shared snapshots and mutation DTOs for `react-achievements` clients.
+
 ## [2.0.1] - 2026-07-08
 
 ### Added

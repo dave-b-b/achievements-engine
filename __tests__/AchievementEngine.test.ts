@@ -684,6 +684,34 @@ describe('AchievementEngine', () => {
       expect(snapshot.unlockedCount).toBe(1);
       expect(snapshot.totalCount).toBe(2);
     });
+
+    test('dependent achievements can observe unlocks from the same update', () => {
+      const engine = new AchievementEngine({
+        achievements: {
+          score: [{
+            isConditionMet: (value) => value === 1,
+            achievementDetails: {
+              achievementId: 'first',
+              achievementTitle: 'First',
+              achievementDescription: '',
+            },
+          }],
+          chain: [{
+            isConditionMet: (_value, state) => state.unlockedAchievements.includes('first'),
+            achievementDetails: {
+              achievementId: 'second',
+              achievementTitle: 'Second',
+              achievementDescription: '',
+            },
+          }],
+        },
+      });
+
+      expect(engine.update({ score: 1, chain: true }).snapshot.unlockedIds).toEqual([
+        'first',
+        'second',
+      ]);
+    });
   });
 
   describe('Reset Functionality', () => {

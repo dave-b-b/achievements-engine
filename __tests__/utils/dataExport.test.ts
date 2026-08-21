@@ -147,6 +147,23 @@ describe('dataExport', () => {
       expect(hash1).not.toBe(hash2);
     });
 
+    test('should include custom condition functions in the hash', () => {
+      const config1 = {
+        score: { custom: { title: 'Test', condition: () => true } },
+      };
+      const config2 = {
+        score: { custom: { title: 'Test', condition: () => false } },
+      };
+
+      expect(createConfigHash(config1)).not.toBe(createConfigHash(config2));
+    });
+
+    test('should ignore object key insertion order', () => {
+      expect(createConfigHash({ score: 1, level: 2 })).toBe(
+        createConfigHash({ level: 2, score: 1 })
+      );
+    });
+
     test('should return a string', () => {
       const config = { test: 'value' };
       const hash = createConfigHash(config);

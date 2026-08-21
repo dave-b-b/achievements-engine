@@ -111,4 +111,4 @@ export class LocalStorage implements AchievementStorage {
     clear(): void {
         localStorage.removeItem(this.storageKey);
     }
-} 
+}

@@ -49,9 +49,25 @@ export function exportAchievementData(
  * @returns Simple hash string
  */
 export function createConfigHash(config: any): string {
-  // Simple hash based on stringified config
-  // In production, you might want to use a more robust hashing algorithm
-  const str = JSON.stringify(config);
+  const seen = new WeakSet<object>();
+  const serialize = (value: unknown): string => {
+    if (typeof value === 'function') return `function:${value.toString()}`;
+    if (value === undefined) return 'undefined';
+    if (typeof value === 'number' && !Number.isFinite(value)) return `number:${String(value)}`;
+    if (value === null || typeof value !== 'object') return JSON.stringify(value);
+    if (seen.has(value)) throw new TypeError('Achievement configuration must not be circular');
+
+    seen.add(value);
+    const serialized = Array.isArray(value)
+      ? `[${value.map(serialize).join(',')}]`
+      : `{${Object.keys(value as Record<string, unknown>)
+          .sort()
+          .map((key) => `${JSON.stringify(key)}:${serialize((value as Record<string, unknown>)[key])}`)
+          .join(',')}}`;
+    seen.delete(value);
+    return serialized;
+  };
+  const str = serialize(config);
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);

@@ -27,15 +27,25 @@ export interface AchievementDetails {
     achievementDescription: string;
     achievementIconKey?: string;
     confetti?: AchievementConfetti;
+    metadata?: Record<string, unknown>;
 }
 
 export interface AchievementWithStatus extends AchievementDetails {
     isUnlocked: boolean;
+    progress?: {
+        current: number;
+        target: number;
+        percent: number;
+    };
 }
 
 export interface AchievementCondition {
     isConditionMet: (value: AchievementMetricArrayValue, state: AchievementState) => boolean;
     achievementDetails: AchievementDetails | AchievementWithStatus;
+    progress?: {
+        metric: string;
+        target: number;
+    };
 }
 
 export interface AchievementConfiguration {
@@ -48,6 +58,7 @@ export interface SimpleAchievementDetails {
     description?: string;
     icon?: string;
     confetti?: AchievementConfetti;
+    metadata?: Record<string, unknown>;
 }
 
 export interface CustomAchievementDetails extends SimpleAchievementDetails {
@@ -60,7 +71,7 @@ export interface SimpleAchievementConfig {
     };
 }
 
-export type AchievementConfetti = false | Record<string, unknown>;
+export type AchievementConfetti = false | object;
 
 // Union type for backward compatibility
 export type AchievementConfigurationType = AchievementConfiguration | SimpleAchievementConfig;
@@ -192,9 +203,7 @@ export interface EventMapping {
     [eventName: string]: string | MetricUpdater;
 }
 
-/**
- * REST API storage configuration
- */
+/** @deprecated Configuration for the legacy split-state REST storage protocol. */
 export interface RestApiStorageConfig {
     baseUrl: string;
     userId: string;
