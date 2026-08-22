@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deprecated
 - `RestApiStorage` and `restApiConfig` use the legacy split-state REST protocol. New server-backed applications should use `AchievementService` and `createAchievementFetchHandler`.
 
+## [2.0.2] - 2026-08-21
+
+### Added
+- Canonical numeric progress and metadata in achievement snapshots.
+
+### Fixed
+- Concurrent memory mutations and same-update chained unlock evaluation.
+
 ## [2.0.0] - 2026-07-07
 
 ### Added
