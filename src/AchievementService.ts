@@ -1,4 +1,5 @@
 import { normalizeAchievements } from './utils/configNormalizer';
+import { deriveAchievementProgress } from './utils/achievementProgress';
 import type {
     AchievementConfiguration,
     AchievementMetricValue,
@@ -241,21 +242,6 @@ export class AchievementService {
         state?: StoredAchievementState
     ): AchievementDto {
         const details = achievement.achievementDetails;
-        const progressDefinition = achievement.progress;
-        const rawCurrent = progressDefinition && state
-            ? state.metrics[progressDefinition.metric]
-            : undefined;
-        const current = typeof rawCurrent === 'number' ? rawCurrent : 0;
-        const target = progressDefinition?.target;
-        const progress = target === undefined
-            ? undefined
-            : {
-                current,
-                target,
-                percent: isUnlocked
-                    ? 100
-                    : Math.max(0, Math.min(100, target <= 0 ? 100 : (current / target) * 100)),
-            };
 
         return {
             id: details.achievementId,
@@ -265,7 +251,7 @@ export class AchievementService {
             iconKey: details.achievementIconKey,
             isUnlocked,
             unlockedAt: unlockedAt || null,
-            progress,
+            progress: deriveAchievementProgress(achievement.progress, state?.metrics || {}, isUnlocked),
             metadata: details.metadata,
             confetti: details.confetti,
         };

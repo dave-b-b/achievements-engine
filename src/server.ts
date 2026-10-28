@@ -27,7 +27,7 @@ import type {
 } from './contracts';
 
 export interface AchievementFetchHandlerOptions {
-    service: AchievementService;
+    service: Pick<AchievementService, 'getSnapshot' | 'track' | 'increment' | 'event' | 'reset'>;
     getSubjectId: (request: Request) => AchievementSubjectId | Promise<AchievementSubjectId>;
     basePath?: string;
 }

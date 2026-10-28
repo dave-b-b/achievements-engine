@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deprecated
 - `RestApiStorage` and `restApiConfig` use the legacy split-state REST protocol. New server-backed applications should use `AchievementService` and `createAchievementFetchHandler`.
 
+## [2.1.0] - 2026-10-28
+
+### Added
+- Framework-independent `RestAchievementClient` and `createRestAchievementClient` exports for the canonical server protocol.
+- Shared `AchievementClientSnapshot` and `AchievementClientMutationResult` aliases, configurable celebration types, and `deriveAchievementProgress`.
+
+### Fixed
+- Local and service snapshots use one progress derivation, including array-valued metrics and non-finite current values.
+- REST client headers accept records, tuples, `Headers`, and asynchronous header providers.
+- Fetch handlers accept the public service methods structurally, including services imported from the root entry.
+- The normal build command cancels pending TypeScript compiler updates so file watchers cannot keep the process running after output is complete.
+
 ## [2.0.2] - 2026-08-21
 
 ### Added

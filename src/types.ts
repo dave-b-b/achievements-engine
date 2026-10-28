@@ -5,9 +5,10 @@
 
 export type { UnsubscribeFn } from './EventEmitter';
 import type { AchievementEngine } from './AchievementEngine';
+import type { AchievementProgress } from './contracts';
 
 // ============================================================================
-// Core Achievement Types (from react-achievements)
+// Core Achievement Types
 // ============================================================================
 
 export type AchievementMetricValue = number | string | boolean | Date | null | undefined;
@@ -21,60 +22,57 @@ export interface AchievementMetrics {
     [key: string]: AchievementMetricValue[];
 }
 
-export interface AchievementDetails {
+export interface AchievementDetails<TConfetti = AchievementConfetti> {
     achievementId: string;
     achievementTitle: string;
     achievementDescription: string;
     achievementIconKey?: string;
-    confetti?: AchievementConfetti;
+    confetti?: TConfetti;
     metadata?: Record<string, unknown>;
 }
 
-export interface AchievementWithStatus extends AchievementDetails {
+export interface AchievementWithStatus<TConfetti = AchievementConfetti> extends AchievementDetails<TConfetti> {
+    unlockedAt?: string | null;
     isUnlocked: boolean;
-    progress?: {
-        current: number;
-        target: number;
-        percent: number;
-    };
+    progress?: AchievementProgress;
 }
 
-export interface AchievementCondition {
+export interface AchievementCondition<TConfetti = AchievementConfetti> {
     isConditionMet: (value: AchievementMetricArrayValue, state: AchievementState) => boolean;
-    achievementDetails: AchievementDetails | AchievementWithStatus;
+    achievementDetails: AchievementDetails<TConfetti> | AchievementWithStatus<TConfetti>;
     progress?: {
         metric: string;
         target: number;
     };
 }
 
-export interface AchievementConfiguration {
-    [key: string]: AchievementCondition[];
+export interface AchievementConfiguration<TConfetti = AchievementConfetti> {
+    [key: string]: AchievementCondition<TConfetti>[];
 }
 
 // Simple API types
-export interface SimpleAchievementDetails {
+export interface SimpleAchievementDetails<TConfetti = AchievementConfetti> {
     title: string;
     description?: string;
     icon?: string;
-    confetti?: AchievementConfetti;
+    confetti?: TConfetti;
     metadata?: Record<string, unknown>;
 }
 
-export interface CustomAchievementDetails extends SimpleAchievementDetails {
+export interface CustomAchievementDetails<TConfetti = AchievementConfetti> extends SimpleAchievementDetails<TConfetti> {
     condition: (metrics: Record<string, any>) => boolean;
 }
 
-export interface SimpleAchievementConfig {
+export interface SimpleAchievementConfig<TConfetti = AchievementConfetti> {
     [metric: string]: {
-        [threshold: string]: SimpleAchievementDetails | CustomAchievementDetails;
+        [threshold: string]: SimpleAchievementDetails<TConfetti> | CustomAchievementDetails<TConfetti>;
     };
 }
 
 export type AchievementConfetti = false | object;
 
 // Union type for backward compatibility
-export type AchievementConfigurationType = AchievementConfiguration | SimpleAchievementConfig;
+export type AchievementConfigurationType<TConfetti = AchievementConfetti> = AchievementConfiguration<TConfetti> | SimpleAchievementConfig<TConfetti>;
 
 export interface InitialAchievementMetrics {
     [key: string]: AchievementMetricValue;
@@ -262,11 +260,11 @@ export interface ImportResult {
     mergedUnlocked?: string[];
 }
 
-export interface AchievementSnapshot {
-    metrics: AchievementMetrics;
+export interface AchievementSnapshot<TConfetti = AchievementConfetti, TMetrics = AchievementMetrics> {
+    metrics: TMetrics;
     unlockedIds: string[];
-    unlockedAchievements: AchievementWithStatus[];
-    allAchievements: AchievementWithStatus[];
+    unlockedAchievements: AchievementWithStatus<TConfetti>[];
+    allAchievements: AchievementWithStatus<TConfetti>[];
     unlockedCount: number;
     totalCount: number;
 }
