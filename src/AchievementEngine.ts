@@ -5,6 +5,7 @@
 
 import { EventEmitter, UnsubscribeFn } from './EventEmitter';
 import { normalizeAchievements } from './utils/configNormalizer';
+import { deriveAchievementProgress } from './utils/achievementProgress';
 import { exportAchievementData, createConfigHash } from './utils/dataExport';
 import { importAchievementData } from './utils/dataImport';
 import { LocalStorage } from './storage/LocalStorage';
@@ -392,25 +393,13 @@ export class AchievementEngine extends EventEmitter {
             metricAchievements.forEach((achievement) => {
                 const { achievementDetails } = achievement;
                 const isUnlocked = this.unlockedAchievements.includes(achievementDetails.achievementId);
-                const progressDefinition = achievement.progress;
-                const rawCurrent = progressDefinition
-                    ? this.metrics[progressDefinition.metric]
-                    : undefined;
-                const current = typeof rawCurrent === 'number' ? rawCurrent : 0;
-                const target = progressDefinition?.target;
 
                 result.push({
                     ...achievementDetails,
                     achievementTitle: achievementDetails.achievementTitle || '',
                     achievementDescription: achievementDetails.achievementDescription || '',
                     isUnlocked,
-                    progress: target === undefined ? undefined : {
-                        current,
-                        target,
-                        percent: isUnlocked
-                            ? 100
-                            : Math.max(0, Math.min(100, target <= 0 ? 100 : (current / target) * 100)),
-                    },
+                    progress: deriveAchievementProgress(achievement.progress, this.metrics, isUnlocked),
                 });
             });
         });

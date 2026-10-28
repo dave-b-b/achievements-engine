@@ -12,7 +12,7 @@ export interface AchievementProgress {
     percent: number;
 }
 
-export interface AchievementDto {
+export interface AchievementDto<TConfetti = AchievementConfetti> {
     id: string;
     title: string;
     description?: string;
@@ -22,21 +22,21 @@ export interface AchievementDto {
     unlockedAt?: string | null;
     progress?: AchievementProgress;
     metadata?: Record<string, unknown>;
-    confetti?: AchievementConfetti;
+    confetti?: TConfetti;
 }
 
-export interface AchievementApiSnapshot {
-    achievements: AchievementDto[];
+export interface AchievementApiSnapshot<TConfetti = AchievementConfetti> {
+    achievements: AchievementDto<TConfetti>[];
     unlockedIds: string[];
-    unlockedAchievements: AchievementDto[];
+    unlockedAchievements: AchievementDto<TConfetti>[];
     unlockedCount: number;
     totalCount: number;
     metrics?: Record<string, unknown>;
 }
 
-export interface AchievementMutationResult {
-    snapshot: AchievementApiSnapshot;
-    newlyUnlocked: AchievementDto[];
+export interface AchievementMutationResult<TConfetti = AchievementConfetti> {
+    snapshot: AchievementApiSnapshot<TConfetti>;
+    newlyUnlocked: AchievementDto<TConfetti>[];
 }
 
 export interface TrackAchievementInput {
@@ -78,11 +78,15 @@ export interface AchievementServiceConfig {
     clock?: () => Date;
 }
 
-export interface AchievementClient {
-    getSnapshot(): Promise<AchievementApiSnapshot>;
-    track(metric: string, value: unknown): Promise<AchievementMutationResult>;
-    trackMany?(metrics: Record<string, unknown>): Promise<AchievementMutationResult>;
-    increment(metric: string, amount?: number): Promise<AchievementMutationResult>;
-    event(name: string, payload?: unknown): Promise<AchievementMutationResult>;
-    reset?(): Promise<AchievementApiSnapshot>;
+export interface AchievementClient<TConfetti = AchievementConfetti> {
+    getSnapshot(): Promise<AchievementApiSnapshot<TConfetti>>;
+    track(metric: string, value: unknown): Promise<AchievementMutationResult<TConfetti>>;
+    trackMany?(metrics: Record<string, unknown>): Promise<AchievementMutationResult<TConfetti>>;
+    increment(metric: string, amount?: number): Promise<AchievementMutationResult<TConfetti>>;
+    event(name: string, payload?: unknown): Promise<AchievementMutationResult<TConfetti>>;
+    reset?(): Promise<AchievementApiSnapshot<TConfetti>>;
 }
+
+/** Snapshot and mutation aliases shared with React client integrations. */
+export type AchievementClientSnapshot<TConfetti = AchievementConfetti> = AchievementApiSnapshot<TConfetti>;
+export type AchievementClientMutationResult<TConfetti = AchievementConfetti> = AchievementMutationResult<TConfetti>;

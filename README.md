@@ -77,6 +77,26 @@ const century = snapshot.achievements.find(({ id }) => id === 'score_100');
 // century.progress => { current: 40, target: 100, percent: 40 }
 ```
 
+## REST Client
+
+The framework-independent client is available directly from the engine:
+
+```ts
+import { createRestAchievementClient } from 'achievements-engine';
+import type { AchievementClient, AchievementClientSnapshot } from 'achievements-engine';
+
+const client: AchievementClient = createRestAchievementClient({
+  baseUrl: '/api/achievements',
+  credentials: 'include',
+});
+const snapshot: AchievementClientSnapshot = await client.getSnapshot();
+await client.increment('score', 10);
+```
+
+Use an absolute URL in Node.js. The client uses the Fetch API and also accepts a custom `fetcher`, headers (including an async function), and a timeout in milliseconds. It does not import React or require browser globals at module load. `RestApiStorage` remains the separate legacy split-state protocol.
+
+The engine owns achievement definitions, snapshot/client types, and progress derivation. `AchievementApiSnapshot` and `AchievementMutationResult` remain available; `AchievementClientSnapshot` and `AchievementClientMutationResult` are aliases. Data contracts accept an optional celebration type parameter so UI packages can refine their presentation options without redeclaring achievement data.
+
 ## Repository Interface
 
 Production apps should persist achievement state in their own database:

@@ -57,6 +57,8 @@ export type {
 export type {
     AchievementApiSnapshot,
     AchievementClient,
+    AchievementClientSnapshot,
+    AchievementClientMutationResult,
     AchievementDto,
     AchievementEventInput,
     AchievementMutationResult,
@@ -80,7 +82,7 @@ export { OfflineQueueStorage } from './storage/OfflineQueueStorage';
 export { MemoryAchievementRepository } from './repository/MemoryAchievementRepository';
 
 // Storage enum
-export { StorageType, isAsyncStorage } from './types';
+export { StorageType, isAsyncStorage, isDate } from './types';
 
 // Utilities
 export { normalizeAchievements, isSimpleConfig } from './utils/configNormalizer';
@@ -103,3 +105,8 @@ export {
     isAchievementError,
     isRecoverableError
 } from './errors/AchievementErrors';
+
+// Framework-independent REST client for the canonical server protocol.
+export { RestAchievementClient, createRestAchievementClient } from './client/RestAchievementClient';
+export type { RestAchievementClientConfig } from './client/RestAchievementClient';
+export { deriveAchievementProgress } from './utils/achievementProgress';
